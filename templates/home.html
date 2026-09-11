@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="hero">
+  <h1>Smart Student Assistant</h1>
+  <p>Manage courses and tasks with a simple AI-powered assistant.</p>
+  {% if user.is_authenticated %}
+    <a class="button" href="/chat/">Open AI Assistant</a>
+  {% else %}
+    <a class="button" href="/accounts/register/">Get Started</a>
+  {% endif %}
+</section>
+{% endblock %}

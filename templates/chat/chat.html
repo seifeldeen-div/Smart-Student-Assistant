@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>AI Assistant</h2>
+<div class="chat-box">
+{% for msg in history %}
+<p><strong>{{ msg.role }}:</strong> {{ msg.content }}</p>
+{% endfor %}
+</div>
+<form method="post">
+  {% csrf_token %}
+  <input name="message" placeholder="Ask the assistant..." required>
+  <button type="submit">Send</button>
+</form>
+{% endblock %}

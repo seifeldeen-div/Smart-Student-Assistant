@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Courses</h2>
+{% for course in courses %}
+<article class="card"><strong>{{ course.name }}</strong><p>{{ course.description }}</p></article>
+{% empty %}<p>No courses yet.</p>{% endfor %}
+{% endblock %}
