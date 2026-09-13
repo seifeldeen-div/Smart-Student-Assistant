@@ -7,6 +7,35 @@ from courses.models import Course
 from tasks.models import Task
 
 
+class AdminTaskFormCourseVisibilityTests(TestCase):
+    def setUp(self):
+        User = get_user_model()
+
+        self.admin = User.objects.create_user(username="admin", password="secret123")
+        self.admin.is_superuser = True
+        self.admin.is_staff = True
+        self.admin.save()
+
+        Profile.objects.create(user=self.admin, role="admin")
+
+        self.instructor = User.objects.create_user(username="instructor", password="secret123")
+        Profile.objects.create(user=self.instructor, role="instructor")
+
+        self.course = Course.objects.create(
+            name="Course 101",
+            description="Course description",
+            instructor=self.instructor,
+        )
+
+    def test_admin_can_see_all_courses_in_task_form_course_selector(self):
+        self.client.login(username="admin", password="secret123")
+
+        response = self.client.get(reverse("task_create"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Course 101")
+
+
 class OwnershipFilteringTests(TestCase):
     def setUp(self):
         User = get_user_model()
