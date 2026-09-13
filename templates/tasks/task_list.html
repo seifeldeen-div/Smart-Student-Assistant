@@ -1,8 +1,20 @@
 {% extends "base.html" %}
 {% block content %}
 <h2>My Tasks</h2>
-{% if user.profile.role == "student" or user.profile.role == "admin" or user.is_superuser %}<p><a href="{% url 'task_create' %}">Add task</a></p>{% endif %}
+{% if user.profile.role == "student" or user.profile.role == "admin" or user.is_superuser %}
+<p><a href="{% url 'task_create' %}">Add task</a></p>
+{% endif %}
 {% for task in tasks %}
-<article class="card"><strong>{{ task.title }}</strong><p>{{ task.status }} - {{ task.due_date|default:"No deadline" }}</p>{% if user.profile.role == "student" and task.owner == user or user.profile.role == "admin" or user.is_superuser %}<a href="{% url 'task_update' task.id %}">Edit</a> <a href="{% url 'task_delete' task.id %}">Delete</a>{% endif %}</article>
+<article class="card">
+    <strong>{{ task.title }}</strong>
+    <p>Status: {{ task.get_status_display }}</p>
+    <p>Priority: {{ task.get_priority_display }}</p>
+    <p>Due date: {{ task.due_date|default:"No deadline" }}</p>
+    <p>Course: {{ task.course|default:"No course" }}</p>
+    {% if user.profile.role == "student" and task.owner == user or user.profile.role == "admin" or user.is_superuser %}
+    <a href="{% url 'task_update' task.id %}">Edit</a>
+    <a href="{% url 'task_delete' task.id %}">Delete</a>
+    {% endif %}
+</article>
 {% empty %}<p>No tasks yet.</p>{% endfor %}
 {% endblock %}
