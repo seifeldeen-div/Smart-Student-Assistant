@@ -9,10 +9,25 @@ from .models import Course
 @login_required
 def course_list(request):
     courses = Course.objects.all()
-    return render(request, "courses/course_list.html", {"courses": courses})
+    enrolled = Course.objects.filter(students=request.user)
+    return render(request, "courses/course_list.html", {"courses": courses, "enrolled": enrolled})
 
 
-@role_required("instructor")
+@login_required
+def course_students(request, course_id):
+    course = Course.objects.filter(id=course_id).first()
+    if course is None:
+        raise Http404
+
+    is_admin = request.user.is_superuser or getattr(getattr(request.user, "profile", None), "role", None) == "admin"
+    if not is_admin and course.instructor != request.user:
+        raise Http404
+
+    students = course.students.all()
+    return render(request, "courses/course_students.html", {"course": course, "students": students})
+
+
+@role_required("instructor", "admin")
 def course_create(request):
     form = CourseForm(request.POST or None)
     if form.is_valid():
@@ -23,10 +38,14 @@ def course_create(request):
     return render(request, "courses/course_form.html", {"form": form, "title": "Add Course"})
 
 
-@role_required("instructor")
+@role_required("instructor", "admin")
 def course_update(request, course_id):
-    course = Course.objects.filter(id=course_id, instructor=request.user).first()
+    course = Course.objects.filter(id=course_id).first()
     if course is None:
+        raise Http404
+
+    is_admin = request.user.is_superuser or getattr(getattr(request.user, "profile", None), "role", None) == "admin"
+    if not is_admin and course.instructor != request.user:
         raise Http404
 
     form = CourseForm(request.POST or None, instance=course)
@@ -36,10 +55,14 @@ def course_update(request, course_id):
     return render(request, "courses/course_form.html", {"form": form, "title": "Edit Course"})
 
 
-@role_required("instructor")
+@role_required("instructor", "admin")
 def course_delete(request, course_id):
-    course = Course.objects.filter(id=course_id, instructor=request.user).first()
+    course = Course.objects.filter(id=course_id).first()
     if course is None:
+        raise Http404
+
+    is_admin = request.user.is_superuser or getattr(getattr(request.user, "profile", None), "role", None) == "admin"
+    if not is_admin and course.instructor != request.user:
         raise Http404
 
     if request.method == "POST":
@@ -49,11 +72,13 @@ def course_delete(request, course_id):
 
 
 @login_required
-@role_required("student")
+@role_required("student", "admin")
 def course_enroll(request, course_id):
     course = Course.objects.filter(id=course_id).first()
     if course is None:
         raise Http404
 
-    course.students.add(request.user)
+    if not course.students.filter(id=request.user.id).exists():
+        course.students.add(request.user)
+
     return redirect("course_list")

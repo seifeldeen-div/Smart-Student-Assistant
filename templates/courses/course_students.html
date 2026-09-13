@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Enrolled Students - {{ course.name }}</h2>
+{% if students %}
+<div>
+    {% for student in students %}
+    <div>{{ student.username }} (STD-{{ student.id }})</div>
+    {% endfor %}
+</div>
+{% else %}
+<p>No students enrolled yet.</p>
+{% endif %}
+<p><a href="{% url 'course_list' %}">Back to Courses</a></p>
+{% endblock %}

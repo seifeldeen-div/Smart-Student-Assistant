@@ -1,20 +1,43 @@
 {% extends "base.html" %}
 {% block content %}
 <h2>Courses</h2>
-{% if user.profile.role == "instructor" or user.profile.role == "admin" or user.is_superuser %}<p><a
-        href="{% url 'course_create' %}">Add course</a></p>{% endif %}
+{% if user.profile.role == "instructor" or user.profile.role == "admin" or user.is_superuser %}
+<p><a class="btn btn-primary" href="{% url 'course_create' %}">Add course</a></p>
+{% endif %}
+
+{% if user.profile.role == "student" %}
+<h3>Enrolled Courses</h3>
+{% for course in enrolled %}
+<article class="card">
+    <strong>{{ course.name }}</strong>
+    <p>{{ course.description }}</p>
+</article>
+{% empty %}
+<p>You are not enrolled in any course yet.</p>
+{% endfor %}
+{% endif %}
+
 {% for course in courses %}
 <article class="card">
     <strong>{{ course.name }}</strong>
     <p>{{ course.description }}</p>
     {% if user.profile.role == "student" and user not in course.students.all %}
-    <a href="{% url 'course_enroll' course.id %}">Enroll</a>
+    <a class="btn btn-sm btn-success" href="{% url 'course_enroll' course.id %}">Enroll</a>
     {% endif %}
     {% if user.profile.role == "instructor" and course.instructor == user or user.profile.role == "admin" or
     user.is_superuser %}
-    <a href="{% url 'course_update' course.id %}">Edit</a>
-    <a href="{% url 'course_delete' course.id %}">Delete</a>
+    <div class="d-flex gap-2">
+        <a class="btn btn-sm btn-secondary" href="{% url 'course_update' course.id %}">Edit</a>
+        <a class="btn btn-sm btn-danger" href="{% url 'course_delete' course.id %}">Delete</a>
+    </div>
+    <div class="mt-2">
+        <a class="btn btn-sm btn-info" href="{% url 'course_students' course.id %}">
+            Enrolled students: {{ course.students.count }}
+        </a>
+    </div>
     {% endif %}
 </article>
-{% empty %}<p>No courses yet.</p>{% endfor %}
+{% empty %}
+<p>No courses yet.</p>
+{% endfor %}
 {% endblock %}
