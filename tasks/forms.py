@@ -21,7 +21,11 @@ class TaskForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
 
         if self.user:
-            self.fields["course"].queryset = Course.objects.filter(students=self.user)
+            is_admin = self.user.is_superuser or getattr(getattr(self.user, "profile", None), "role", None) == "admin"
+            if is_admin:
+                self.fields["course"].queryset = Course.objects.all()
+            else:
+                self.fields["course"].queryset = Course.objects.filter(students=self.user)
 
     def clean_due_date(self):
         due_date = self.cleaned_data.get("due_date")
@@ -32,6 +36,6 @@ class TaskForm(forms.ModelForm):
     def clean(self):
         cleaned_data = super().clean()
         course = cleaned_data.get("course")
-        if course and self.user and not course.students.filter(id=self.user.id).exists():
+        if course and self.user and not self.user.is_superuser and not course.students.filter(id=self.user.id).exists():
             raise ValidationError("You can only assign a task to a course you are enrolled in.")
         return cleaned_data
