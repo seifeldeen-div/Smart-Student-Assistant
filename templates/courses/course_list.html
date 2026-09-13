@@ -27,8 +27,7 @@
     <a class="btn btn-sm btn-success" href="{% url 'course_enroll' course.id %}">Enroll</a>
     {% endif %}
 
-    {% if user.profile.role == "instructor" and course.instructor == user or user.profile.role == "admin" or
-    user.is_superuser %}
+    {% if user.profile.role == "instructor" and course.instructor == user or user.profile.role == "admin" or user.is_superuser %}
     <div class="d-flex gap-2">
         <a class="btn btn-sm btn-secondary" href="{% url 'course_update' course.id %}">Edit</a>
         <a class="btn btn-sm btn-danger" href="{% url 'course_delete' course.id %}">Delete</a>
