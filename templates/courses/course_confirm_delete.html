@@ -1,6 +1,23 @@
 {% extends "base.html" %}
+{% block title %}Delete course · Smart Student Assistant{% endblock %}
+
 {% block content %}
-<h2>Delete course</h2>
-<p>Delete "{{ course.name }}"?</p>
-<form method="post">{% csrf_token %}<button type="submit">Delete</button></form>
+<div class="delete-card card reveal">
+    <div class="delete-icon" aria-hidden="true">
+        <svg class="ico"><use href="#ico-trash"/></svg>
+    </div>
+    <h2>Delete course</h2>
+    <p>
+        Are you sure you want to delete
+        <strong style="color: #fff;">&quot;{{ course.name }}&quot;</strong>?
+        This action cannot be undone.
+    </p>
+    <form method="post">
+        {% csrf_token %}
+        <div class="delete-actions">
+            <button class="btn btn-lg btn-danger" type="submit">Delete course</button>
+            <a class="btn btn-lg btn-secondary" href="{% url 'course_list' %}">Keep it</a>
+        </div>
+    </form>
+</div>
 {% endblock %}

@@ -1,20 +1,56 @@
 {% extends "base.html" %}
+{% block title %}Tasks · Smart Student Assistant{% endblock %}
+
 {% block content %}
-<h2>My Tasks</h2>
-{% if user.profile.role == "student" or user.profile.role == "admin" or user.is_superuser %}
-<p><a href="{% url 'task_create' %}">Add task</a></p>
-{% endif %}
-{% for task in tasks %}
-<article class="card">
-    <strong>{{ task.title }}</strong>
-    <p>Status: {{ task.get_status_display }}</p>
-    <p>Priority: {{ task.get_priority_display }}</p>
-    <p>Due date: {{ task.due_date|default:"No deadline" }}</p>
-    <p>Course: {{ task.course|default:"No course" }}</p>
-    {% if user.profile.role == "student" and task.owner == user or user.profile.role == "admin" or user.is_superuser %}
-    <a href="{% url 'task_update' task.id %}">Edit</a>
-    <a href="{% url 'task_delete' task.id %}">Delete</a>
+<div class="page-header reveal">
+    <div>
+        <h1 class="page-title">My Tasks</h1>
+        <p class="page-subtitle">Keep track of assignments, deadlines and priorities.</p>
+    </div>
+    {% if user.profile.role == "student" or user.profile.role == "admin" or user.is_superuser %}
+        <a class="btn btn-accent" href="{% url 'task_create' %}"><svg class="ico ico-sm"><use href="#ico-plus"/></svg>&nbsp;New task</a>
     {% endif %}
-</article>
-{% empty %}<p>No tasks yet.</p>{% endfor %}
+</div>
+
+<div class="grid-cards">
+    {% for task in tasks %}
+        <article class="card reveal">
+            <div class="d-flex justify-between align-center gap-2">
+                <div class="d-flex align-center gap-2">
+                    <span class="dash-icon" aria-hidden="true" style="width: 38px; height: 38px;">
+                        <svg class="ico"><use href="#ico-check-square"/></svg>
+                    </span>
+                    <h3 class="card-title" style="margin-bottom: 0;">{{ task.title }}</h3>
+                </div>
+                <span class="badge status-{{ task.status }}">{{ task.get_status_display }}</span>
+            </div>
+
+            <p class="card-text mt-1">{{ task.description|default:"No description provided." }}</p>
+
+            <div class="card-meta">
+                <span class="badge priority-{{ task.priority }}">{{ task.get_priority_display }} priority</span>
+                <span class="badge role-student">{{ task.due_date|date:"d M Y"|default:"No deadline" }}</span>
+                {% if task.course %}
+                    <span class="badge role-instructor">{{ task.course.name }}</span>
+                {% else %}
+                    <span class="badge role-student">No course</span>
+                {% endif %}
+            </div>
+
+            {% if user.profile.role == "student" and task.owner == user or user.profile.role == "admin" or user.is_superuser %}
+                <div class="card-actions">
+                    <a class="btn btn-sm btn-secondary" href="{% url 'task_update' task.id %}"><svg class="ico ico-sm"><use href="#ico-pencil"/></svg>&nbsp;Edit</a>
+                    <a class="btn btn-sm btn-danger" href="{% url 'task_delete' task.id %}"><svg class="ico ico-sm"><use href="#ico-trash"/></svg>&nbsp;Delete</a>
+                </div>
+            {% endif %}
+        </article>
+    {% empty %}
+        <div class="empty-state">
+            <svg class="ico ico-xl mb-1" style="color: var(--text-3);"><use href="#ico-check-square"/></svg>
+            No tasks yet.
+            <br>
+            <a class="btn btn-sm btn-accent mt-2" href="{% url 'task_create' %}"><svg class="ico ico-sm"><use href="#ico-plus"/></svg>&nbsp;Create your first task</a>
+        </div>
+    {% endfor %}
+</div>
 {% endblock %}
