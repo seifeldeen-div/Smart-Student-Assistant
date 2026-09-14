@@ -1,26 +1,193 @@
 <!doctype html>
+{% load static %}
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Student Assistant</title>
-    <link rel="stylesheet" href="/static/css/style.css">
+    <title>{% block title %}Smart Student Assistant{% endblock %}</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <script src="{% static 'js/main.js' %}" defer></script>
 </head>
 <body>
-<nav>
-    <a href="/">Smart Student Assistant</a>
-    {% if user.is_authenticated %}
-      <a href="/tasks/">Tasks</a>
-      <a href="/courses/">Courses</a>
-      <a href="/chat/">AI Assistant</a>
-      <form action="/accounts/logout/" method="post" style="display:inline;">
-        {% csrf_token %}<button type="submit">Logout</button>
-      </form>
-    {% else %}
-      <a href="/accounts/login/">Login</a>
-      <a href="/accounts/register/">Register</a>
-    {% endif %}
-</nav>
-<main>{% block content %}{% endblock %}</main>
-</body>
+
+<!-- ===================== SVG SPRITE (hidden) ===================== -->
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none">
+    <symbol id="ico-cap" viewBox="0 0 24 24">
+        <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+        <path d="M6 12v5c0 1.66 2.69 3 6 3s6-1.34 6-3v-5"/>
+    </symbol>
+    <symbol id="ico-dashboard" viewBox="0 0 24 24">
+        <rect x="3" y="3" width="7" height="7" rx="1"/>
+        <rect x="14" y="3" width="7" height="7" rx="1"/>
+        <rect x="3" y="14" width="7" height="7" rx="1"/>
+        <rect x="14" y="14" width="7" height="7" rx="1"/>
+    </symbol>
+    <symbol id="ico-book" viewBox="0 0 24 24">
+        <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/>
+    </symbol>
+    <symbol id="ico-check-square" viewBox="0 0 24 24">
+        <rect x="3" y="3" width="18" height="18" rx="2"/>
+        <path d="m9 12 2 2 4-4"/>
+    </symbol>
+    <symbol id="ico-sparkles" viewBox="0 0 24 24">
+        <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3L12 3Z"/>
+        <path d="M5 3v4M19 17v4M3 5h4M17 19h4"/>
+    </symbol>
+    <symbol id="ico-power" viewBox="0 0 24 24">
+        <path d="M18.36 6.64A9 9 0 1 1 5.64 6.64"/>
+        <path d="M12 2v10"/>
+    </symbol>
+    <symbol id="ico-user" viewBox="0 0 24 24">
+        <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/>
+        <circle cx="12" cy="7" r="4"/>
+    </symbol>
+    <symbol id="ico-users" viewBox="0 0 24 24">
+        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+        <circle cx="9" cy="7" r="4"/>
+        <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+    </symbol>
+    <symbol id="ico-pencil" viewBox="0 0 24 24">
+        <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+        <path d="m15 5 4 4"/>
+    </symbol>
+    <symbol id="ico-trash" viewBox="0 0 24 24">
+        <path d="M3 6h18"/>
+        <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
+        <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+    </symbol>
+    <symbol id="ico-check" viewBox="0 0 24 24">
+        <path d="M20 6 9 17l-5-5"/>
+    </symbol>
+    <symbol id="ico-plus" viewBox="0 0 24 24">
+        <path d="M5 12h14"/>
+        <path d="M12 5v14"/>
+    </symbol>
+    <symbol id="ico-calendar" viewBox="0 0 24 24">
+        <path d="M8 2v4"/>
+        <path d="M16 2v4"/>
+        <rect width="18" height="18" x="3" y="4" rx="2"/>
+        <path d="M3 10h18"/>
+    </symbol>
+    <symbol id="ico-bolt" viewBox="0 0 24 24">
+        <path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/>
+    </symbol>
+    <symbol id="ico-send" viewBox="0 0 24 24">
+        <path d="m22 2-7 20-4-9-9-4Z"/>
+        <path d="M22 2 11 13"/>
+    </symbol>
+    <symbol id="ico-save" viewBox="0 0 24 24">
+        <path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/>
+        <path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"/>
+        <path d="M7 3v4a1 1 0 0 0 1 1h7"/>
+    </symbol>
+    <symbol id="ico-arrow-right" viewBox="0 0 24 24">
+        <path d="M5 12h14"/>
+        <path d="m12 5 7 7-7 7"/>
+    </symbol>
+    <symbol id="ico-arrow-left" viewBox="0 0 24 24">
+        <path d="m12 19-7-7 7-7"/>
+        <path d="M19 12H5"/>
+    </symbol>
+    <symbol id="ico-clock" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="10"/>
+        <polyline points="12 6 12 12 16 14"/>
+    </symbol>
+    <symbol id="ico-inbox" viewBox="0 0 24 24">
+        <polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/>
+        <path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>
+    </symbol>
+    <symbol id="ico-alert" viewBox="0 0 24 24">
+        <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/>
+        <path d="M12 9v4"/>
+        <path d="M12 17h.01"/>
+    </symbol>
+    <symbol id="ico-menu" viewBox="0 0 24 24">
+        <line x1="4" x2="20" y1="12" y2="12"/>
+        <line x1="4" x2="20" y1="6" y2="6"/>
+        <line x1="4" x2="20" y1="18" y2="18"/>
+    </symbol>
+    <symbol id="ico-x" viewBox="0 0 24 24">
+        <path d="M18 6 6 18"/>
+        <path d="m6 6 12 12"/>
+    </symbol>
+</svg>
+
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+<div class="orb orb-3"></div>
+
+<header>
+    <nav class="navbar">
+        <a class="brand" href="/">
+            <span class="brand-logo" aria-hidden="true">
+                <svg class="ico"><use href="#ico-cap"/></svg>
+            </span>
+            <span>Smart Student Assistant</span>
+        </a>
+
+        {% if user.is_authenticated %}
+            <button class="nav-toggle" type="button" data-nav-toggle aria-label="Toggle navigation" aria-expanded="false">
+                <span></span><span></span><span></span>
+            </button>
+            <ul class="nav-links">
+                <li><a href="/" data-nav><svg class="ico ico-sm"><use href="#ico-dashboard"/></svg>&nbsp;<span class="nav-label">Dashboard</span></a></li>
+                <li><a href="/courses/" data-nav><svg class="ico ico-sm"><use href="#ico-book"/></svg>&nbsp;<span class="nav-label">Courses</span></a></li>
+                <li><a href="/tasks/" data-nav><svg class="ico ico-sm"><use href="#ico-check-square"/></svg>&nbsp;<span class="nav-label">Tasks</span></a></li>
+                <li><a href="/chat/" data-nav><svg class="ico ico-sm"><use href="#ico-sparkles"/></svg>&nbsp;<span class="nav-label">AI Assistant</span></a></li>
+                <li>
+                    <form action="/accounts/logout/" method="post">
+                        {% csrf_token %}
+                        <button class="button-logout" type="submit"><svg class="ico ico-sm"><use href="#ico-power"/></svg>&nbsp;Logout</button>
+                    </form>
+                </li>
+            </ul>
+            <div class="nav-user">
+                <span class="avatar" aria-hidden="true">{{ user.get_username|first|upper }}</span>
+                <span>
+                    <strong>{{ user.get_username }}</strong>
+                    {% if user.profile.role %}
+                        <br><span class="role-chip">{{ user.profile.role }}</span>
+                    {% endif %}
+                </span>
+            </div>
+        {% else %}
+            <ul class="nav-links">
+                <li><a href="/accounts/login/" data-nav><svg class="ico ico-sm"><use href="#ico-user"/></svg>&nbsp;<span class="nav-label">Login</span></a></li>
+                <li><a href="/accounts/register/" data-nav><svg class="ico ico-sm"><use href="#ico-plus"/></svg>&nbsp;<span class="nav-label">Register</span></a></li>
+            </ul>
+        {% endif %}
+    </nav>
+</header>
+
+{% if messages %}
+    <div class="messages-container" aria-live="polite">
+        {% for message in messages %}
+            <div class="message-toast {{ message.tags }}">
+                <span class="toast-icon" aria-hidden="true">
+                    {% if message.tags == "success" %}<svg class="ico"><use href="#ico-check"/></svg>
+                    {% elif message.tags == "error" %}<svg class="ico"><use href="#ico-x"/></svg>
+                    {% elif message.tags == "warning" %}<svg class="ico"><use href="#ico-alert"/></svg>
+                    {% else %}<svg class="ico"><use href="#ico-sparkles"/></svg>{% endif %}
+                </span>
+                <span>{{ message }}</span>
+            </div>
+        {% endfor %}
+    </div>
+{% endif %}
+
+<main class="container">
+    {% block content %}{% endblock %}
+</main>
+
+<footer class="footer">
+    <span class="footer-brand">Smart Student Assistant</span>
+    &middot; Graduate Project Built with Django &middot; &copy; {% now "Y" %}
+</footer>
+  </body>
 </html>

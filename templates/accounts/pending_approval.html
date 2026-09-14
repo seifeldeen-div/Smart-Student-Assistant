@@ -1,6 +1,22 @@
 {% extends "base.html" %}
+{% block title %}Pending Approval · Smart Student Assistant{% endblock %}
+
 {% block content %}
-<h2>Application Pending Approval</h2>
-<p>Your instructor account and CV were submitted for review. You can log in after an administrator approves your account.</p>
-<a href="{% url 'login' %}">Go to login</a>
+<div class="auth-wrap">
+    <div class="form-card" style="text-align: center;">
+        <div class="dash-icon mx-auto mb-2" aria-hidden="true"
+             style="width: 72px; height: 72px; margin: 0 auto 18px; background: var(--grad-accent);">
+            <svg class="ico"><use href="#ico-clock"/></svg>
+        </div>
+        <h1>Account pending approval</h1>
+        <p class="form-intro" style="margin-bottom: 10px;">
+            Your instructor account and CV were submitted for review.<br>
+            You can log in as soon as an administrator approves your account.
+        </p>
+        <p class="text-muted" style="font-size: 0.85rem; margin-bottom: 24px;">
+            You will receive access once the review is complete.
+        </p>
+        <a class="btn btn-accent btn-lg" href="{% url 'login' %}">Go to login</a>
+    </div>
+</div>
 {% endblock %}

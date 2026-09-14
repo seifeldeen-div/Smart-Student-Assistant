@@ -1,14 +1,33 @@
 {% extends "base.html" %}
+{% block title %}Enrolled students · {{ course.name }}{% endblock %}
+
 {% block content %}
-<h2>Enrolled Students - {{ course.name }}</h2>
-{% if students %}
-<div>
-    {% for student in students %}
-    <div>{{ student.username }} (STD-{{ student.id }})</div>
-    {% endfor %}
+<div class="page-header reveal">
+    <div>
+        <h1 class="page-title">Enrolled students</h1>
+        <p class="page-subtitle"><strong style="color: #fff;">{{ course.name }}</strong> &middot; {{ course.students.count }} enrolled</p>
+    </div>
+    <a class="btn btn-secondary" href="{% url 'course_list' %}"><svg class="ico ico-sm"><use href="#ico-arrow-left"/></svg>&nbsp;Back to courses</a>
 </div>
+
+{% if students %}
+    <div class="student-list" style="max-width: 640px;">
+        {% for student in students %}
+            <div class="student-item reveal">
+                <span class="student-avatar" aria-hidden="true">{{ student.get_username|first|upper }}</span>
+                <span>
+                    <span class="student-name">{{ student.get_username }}</span>
+                    <br>
+                    <span class="student-id">Student ID: STD-{{ student.id }}</span>
+                </span>
+                <span class="badge status-completed" style="margin-left: auto;"><svg class="ico ico-sm" style="width:0.9em;height:0.9em;"><use href="#ico-check"/></svg>&nbsp;Enrolled</span>
+            </div>
+        {% endfor %}
+    </div>
 {% else %}
-<p>No students enrolled yet.</p>
+    <div class="empty-state" style="max-width: 640px;">
+        <svg class="ico ico-xl mb-1" style="color: var(--text-3);"><use href="#ico-users"/></svg>
+        No students are enrolled in this course yet.
+    </div>
 {% endif %}
-<p><a href="{% url 'course_list' %}">Back to Courses</a></p>
 {% endblock %}

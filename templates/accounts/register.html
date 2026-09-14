@@ -1,85 +1,96 @@
 {% extends "base.html" %}
+{% block title %}Register · Smart Student Assistant{% endblock %}
+
 {% block content %}
-<h2>Create Account</h2>
-<style>
-	.password-toggle-wrapper {
-		position: relative;
-		display: block;
-		width: 175px;
-		max-width: 100%;
-	}
+<div class="auth-wrap">
+    <div class="form-card">
+        <h1>Create your account</h1>
+        <p class="form-intro">Join as a student, or apply as an instructor.</p>
 
-	.password-toggle-wrapper input {
-		width: 100%;
-		max-width: 175px;
-		box-sizing: border-box;
-	}
+        {% if form.non_field_errors %}
+            <div class="form-errors">
+                {% for error in form.non_field_errors %}
+                    <div class="error-banner"><svg class="ico ico-sm"><use href="#ico-alert"/></svg>&nbsp;{{ error }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
 
-	.password-toggle-button {
-		position: absolute;
-		top: 50%;
-		right: 10px;
-		transform: translateY(-50%);
-		width: auto;
-		padding: 0;
-		border: 0;
-		border-radius: 0;
-		background: transparent !important;
-		color: #172033;
-		line-height: 1;
-	}
+        <form method="post" enctype="multipart/form-data" novalidate>
+            {% csrf_token %}
 
-	.password-toggle-button svg {
-		display: block;
-		width: 20px;
-		height: 20px;
-	}
-</style>
-<form method="post" enctype="multipart/form-data">
-	{% csrf_token %}
-	{{ form.as_p }}
-	<button type="submit">Create Account</button>
-</form>
-<script>
-	document.addEventListener("DOMContentLoaded", function () {
-		const roleField = document.getElementById("id_role");
-		const cvInput = document.getElementById("id_cv_file");
-		const cvField = cvInput ? cvInput.closest("p") : null;
-		const eyeIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"></path><circle cx="12" cy="12" r="3"></circle></svg>';
-		const eyeSlashIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m3 3 18 18"></path><path d="M10.6 5.1A10.8 10.8 0 0 1 12 5c6.5 0 10 7 10 7a18.7 18.7 0 0 1-3.1 4.1"></path><path d="M6.2 6.2C3.6 8.2 2 12 2 12s3.5 7 10 7a9.8 9.8 0 0 0 4.2-.9"></path><path d="M9.9 9.9a3 3 0 1 0 4.2 4.2"></path></svg>';
+            <div class="form-group">
+                <label for="{{ form.username.id_for_label }}">Username</label>
+                <div class="form-control field-with-icon">
+                    <span class="field-icon" aria-hidden="true"><svg class="ico"><use href="#ico-user"/></svg></span>
+                    {{ form.username }}
+                </div>
+                {% if form.username.help_text %}<p class="form-hint">{{ form.username.help_text }}</p>{% endif %}
+                {% for error in form.username.errors %}
+                    <ul class="errorlist"><li>{{ error }}</li></ul>
+                {% endfor %}
+            </div>
 
-		document.querySelectorAll('input[type="password"]').forEach(function (passwordInput) {
-			const wrapper = document.createElement("span");
-			const toggleButton = document.createElement("button");
-			wrapper.className = "password-toggle-wrapper";
-			toggleButton.type = "button";
-			toggleButton.className = "password-toggle-button";
-			toggleButton.setAttribute("aria-label", "Show password");
-			toggleButton.innerHTML = eyeSlashIcon;
+            <div class="form-group">
+                <label for="{{ form.password1.id_for_label }}">Password</label>
+                <div class="form-control">
+                    {{ form.password1 }}
+                    <button type="button"
+                            class="password-toggle-button"
+                            data-password-toggle="#{{ form.password1.id_for_label }}"
+                            aria-label="Show password"
+                            aria-pressed="false">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 3 18 18"></path><path d="M10.6 5.1A10.8 10.8 0 0 1 12 5c6.5 0 10 7 10 7a18.7 18.7 0 0 1-3.1 4.1"></path><path d="M6.2 6.2C3.6 8.2 2 12 2 12s3.5 7 10 7a9.8 9.8 0 0 0 4.2-.9"></path><path d="M9.9 9.9a3 3 0 1 0 4.2 4.2"></path></svg>
+                    </button>
+                </div>
+                {% if form.password1.help_text %}<div class="form-hint">{{ form.password1.help_text }}</div>{% endif %}
+                {% for error in form.password1.errors %}
+                    <ul class="errorlist"><li>{{ error }}</li></ul>
+                {% endfor %}
+            </div>
 
-			passwordInput.parentNode.insertBefore(wrapper, passwordInput);
-			wrapper.appendChild(passwordInput);
-			wrapper.appendChild(toggleButton);
+            <div class="form-group">
+                <label for="{{ form.password2.id_for_label }}">Confirm password</label>
+                <div class="form-control">
+                    {{ form.password2 }}
+                    <button type="button"
+                            class="password-toggle-button"
+                            data-password-toggle="#{{ form.password2.id_for_label }}"
+                            aria-label="Show password"
+                            aria-pressed="false">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 3 18 18"></path><path d="M10.6 5.1A10.8 10.8 0 0 1 12 5c6.5 0 10 7 10 7a18.7 18.7 0 0 1-3.1 4.1"></path><path d="M6.2 6.2C3.6 8.2 2 12 2 12s3.5 7 10 7a9.8 9.8 0 0 0 4.2-.9"></path><path d="M9.9 9.9a3 3 0 1 0 4.2 4.2"></path></svg>
+                    </button>
+                </div>
+                {% for error in form.password2.errors %}
+                    <ul class="errorlist"><li>{{ error }}</li></ul>
+                {% endfor %}
+            </div>
 
-			toggleButton.addEventListener("click", function () {
-				const isVisible = passwordInput.type === "text";
-				passwordInput.type = isVisible ? "password" : "text";
-				toggleButton.setAttribute("aria-label", isVisible ? "Show password" : "Hide password");
-				toggleButton.innerHTML = isVisible ? eyeSlashIcon : eyeIcon;
-			});
-		});
+            <div class="form-group">
+                <label for="{{ form.role.id_for_label }}">I am a</label>
+                <div class="form-control">
+                    {{ form.role }}
+                </div>
+                {% for error in form.role.errors %}
+                    <ul class="errorlist"><li>{{ error }}</li></ul>
+                {% endfor %}
+            </div>
 
-		function updateCvVisibility() {
-			if (!roleField || !cvInput || !cvField) {
-				return;
-			}
-			const isInstructor = roleField.value === "instructor";
-			cvField.hidden = !isInstructor;
-			cvInput.required = isInstructor;
-		}
+            <div class="form-group" id="cv-group">
+                <label for="{{ form.cv_file.id_for_label }}">CV / Resume <span class="text-muted" style="font-weight: 400;">(PDF, DOC, DOCX &mdash; required for instructors)</span></label>
+                <div class="form-control">
+                    {{ form.cv_file }}
+                </div>
+                {% for error in form.cv_file.errors %}
+                    <ul class="errorlist"><li>{{ error }}</li></ul>
+                {% endfor %}
+            </div>
 
-		roleField.addEventListener("change", updateCvVisibility);
-		updateCvVisibility();
-	});
-</script>
+            <button class="btn btn-block btn-lg" type="submit">Create account</button>
+        </form>
+
+        <p class="auth-switch">
+            Already have an account? <a href="{% url 'login' %}">Log in</a>
+        </p>
+    </div>
+</div>
 {% endblock %}

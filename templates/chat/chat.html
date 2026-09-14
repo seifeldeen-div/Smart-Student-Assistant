@@ -1,14 +1,43 @@
 {% extends "base.html" %}
+{% block title %}AI Assistant · Smart Student Assistant{% endblock %}
+
 {% block content %}
-<h2>AI Assistant</h2>
-<div class="chat-box">
-{% for msg in history %}
-<p><strong>{{ msg.role }}:</strong> {{ msg.content }}</p>
-{% endfor %}
+<div class="chat-layout">
+    <div class="page-header reveal" style="justify-content: center;">
+        <div style="text-align: center;">
+            <h1 class="page-title">AI Assistant</h1>
+            <p class="page-subtitle" style="margin: 6px auto 0;">
+                Ask about your courses, tasks or study plan &mdash; I'll help you stay on top.
+            </p>
+        </div>
+    </div>
+
+    {% if history %}
+        <div class="chat-box reveal">
+            {% for msg in history %}
+                <div class="chat-bubble {{ msg.role }}">
+                    <span>{{ msg.content }}</span>
+                    <span class="bubble-meta">{{ msg.created_at|date:"d M Y, H:i" }}</span>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state reveal">
+            <svg class="ico ico-xl mb-1" style="color: var(--text-3);"><use href="#ico-sparkles"/></svg>
+            No messages yet. Start a conversation with your assistant below.
+        </div>
+    {% endif %}
+
+    <form method="post" class="chat-input-row reveal">
+        {% csrf_token %}
+        <input type="text" name="message"
+               placeholder="Ask the assistant anything… (e.g. &quot;What is my next deadline?&quot;)"
+               required autocomplete="off" autofocus>
+        <button class="btn btn-accent" type="submit">Send<svg class="ico ico-sm"><use href="#ico-send"/></svg></button>
+    </form>
+
+    <p class="chat-hint">
+        The assistant can help you find courses and manage tasks. Messages are saved in your history.
+    </p>
 </div>
-<form method="post">
-  {% csrf_token %}
-  <input name="message" placeholder="Ask the assistant..." required>
-  <button type="submit">Send</button>
-</form>
 {% endblock %}

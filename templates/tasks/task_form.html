@@ -1,5 +1,38 @@
 {% extends "base.html" %}
+{% block title %}{{ title }} · Smart Student Assistant{% endblock %}
+
 {% block content %}
-<h2>{{ title }}</h2>
-<form method="post">{% csrf_token %}{{ form.as_p }}<button type="submit">Save</button></form>
+<div class="auth-wrap">
+    <div class="form-card">
+        <h1>{{ title }}</h1>
+        <p class="form-intro">Fill in the details below and save when you are ready.</p>
+
+        {% if form.non_field_errors %}
+            <div class="form-errors">
+                {% for error in form.non_field_errors %}
+                    <div class="error-banner"><svg class="ico ico-sm"><use href="#ico-alert"/></svg>&nbsp;{{ error }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <form method="post" novalidate>
+            {% csrf_token %}
+            {% for field in form.visible_fields %}
+                <div class="form-group">
+                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    <div class="form-control">{{ field }}</div>
+                    {% if field.help_text %}<p class="form-hint">{{ field.help_text }}</p>{% endif %}
+                    {% for error in field.errors %}
+                        <ul class="errorlist"><li>{{ error }}</li></ul>
+                    {% endfor %}
+                </div>
+            {% endfor %}
+
+            <div class="d-flex gap-2">
+                <button class="btn btn-lg" type="submit"><svg class="ico ico-sm"><use href="#ico-save"/></svg>&nbsp;Save task</button>
+                <a class="btn btn-lg btn-secondary" href="{% url 'task_list' %}">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
 {% endblock %}

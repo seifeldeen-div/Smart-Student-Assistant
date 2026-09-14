@@ -1,45 +1,90 @@
 {% extends "base.html" %}
-{% block content %}
-<h2>Courses</h2>
+{% block title %}Courses · Smart Student Assistant{% endblock %}
 
-{% if user.profile.role == "instructor" or user.profile.role == "admin" or user.is_superuser %}
-<p><a class="btn btn-primary" href="{% url 'course_create' %}">Add course</a></p>
-{% endif %}
+{% block content %}
+<div class="courses-page">
+<div class="page-header reveal">
+    <div>
+        <h1 class="page-title">Courses</h1>
+        <p class="page-subtitle">Browse, enrol and manage your courses.</p>
+    </div>
+    {% if user.profile.role == "instructor" or user.profile.role == "admin" or user.is_superuser %}
+        <a class="btn btn-accent" href="{% url 'course_create' %}"><svg class="ico ico-sm"><use href="#ico-plus"/></svg>&nbsp;Add course</a>
+    {% endif %}
+</div>
 
 {% if user.profile.role == "student" %}
-<h3>Enrolled Courses</h3>
-{% for course in enrolled %}
-<article class="card">
-    <strong>{{ course.name }}</strong>
-    <p>{{ course.description }}</p>
-</article>
-{% empty %}
-<p>You are not enrolled in any course yet.</p>
-{% endfor %}
+    <h2 class="section-title"><span class="dot"></span>Your enrolled courses</h2>
+    <div class="grid-cards">
+        {% for course in enrolled %}
+            <article class="card reveal">
+                <div class="d-flex align-center gap-2">
+                    <span class="dash-icon" aria-hidden="true" style="width: 40px; height: 40px;">
+                        <svg class="ico"><use href="#ico-book"/></svg>
+                    </span>
+                    <h3 class="card-title" style="margin-bottom: 0;">{{ course.name }}</h3>
+                </div>
+                <p class="card-text mt-1">{{ course.description }}</p>
+                <div class="card-meta">
+                    {% if course.instructor %}
+                        <span class="badge role-instructor">{{ course.instructor.get_username }}</span>
+                    {% endif %}
+                </div>
+            </article>
+        {% empty %}
+            <div class="empty-state">
+                <svg class="ico ico-xl mb-1" style="color: var(--text-3);"><use href="#ico-inbox"/></svg>
+                You are not enrolled in any course yet.
+                <br>
+                <a class="btn btn-sm btn-secondary mt-2" href="#all-courses">Browse available courses</a>
+            </div>
+        {% endfor %}
+    </div>
 {% endif %}
 
-{% for course in courses %}
-<article class="card">
-    <strong>{{ course.name }}</strong>
-    <p>{{ course.description }}</p>
+<h2 class="section-title"><span class="dot"></span>All courses</h2>
+<div class="grid-cards" id="all-courses">
+    {% for course in courses %}
+        <article class="card reveal">
+            <div class="d-flex align-center gap-2">
+                <span class="dash-icon" aria-hidden="true" style="width: 40px; height: 40px;">
+                    <svg class="ico"><use href="#ico-book"/></svg>
+                </span>
+                <h3 class="card-title" style="margin-bottom: 0;">{{ course.name }}</h3>
+            </div>
+            <p class="card-text mt-1">{{ course.description|default:"No description provided." }}</p>
 
-    {% if user.profile.role == "student" and user not in course.students.all %}
-    <a class="btn btn-sm btn-success" href="{% url 'course_enroll' course.id %}">Enroll</a>
-    {% endif %}
+            <div class="card-meta">
+                {% if course.instructor %}
+                    <span class="badge role-instructor">{{ course.instructor.get_username }}</span>
+                {% endif %}
+                <span class="badge role-student">{{ course.students.count }} enrolled</span>
+            </div>
 
-    {% if user.profile.role == "instructor" and course.instructor == user or user.profile.role == "admin" or user.is_superuser %}
-    <div class="d-flex gap-2">
-        <a class="btn btn-sm btn-secondary" href="{% url 'course_update' course.id %}">Edit</a>
-        <a class="btn btn-sm btn-danger" href="{% url 'course_delete' course.id %}">Delete</a>
-    </div>
-    <div class="mt-2">
-        <a class="btn btn-sm btn-info" href="{% url 'course_students' course.id %}">
-            Enrolled students: {{ course.students.count }}
-        </a>
-    </div>
-    {% endif %}
-</article>
-{% empty %}
-<p>No courses yet.</p>
-{% endfor %}
+            <div class="card-actions">
+                {% if user.profile.role == "student" and user not in course.students.all %}
+                    <a class="btn btn-sm btn-success" href="{% url 'course_enroll' course.id %}"><svg class="ico ico-sm"><use href="#ico-plus"/></svg>&nbsp;Enrol</a>
+                {% endif %}
+
+                {% if user.profile.role == "student" and user in course.students.all %}
+                    <span class="badge status-completed" style="padding: 8px 14px;"><svg class="ico ico-sm" style="width:0.9em;height:0.9em;"><use href="#ico-check"/></svg>&nbsp;Enrolled</span>
+                {% endif %}
+
+                {% if user.profile.role == "instructor" and course.instructor == user or user.profile.role == "admin" or user.is_superuser %}
+                    <a class="btn btn-sm btn-secondary" href="{% url 'course_update' course.id %}"><svg class="ico ico-sm"><use href="#ico-pencil"/></svg>&nbsp;Edit</a>
+                    <a class="btn btn-sm btn-danger" href="{% url 'course_delete' course.id %}"><svg class="ico ico-sm"><use href="#ico-trash"/></svg>&nbsp;Delete</a>
+                    <a class="btn btn-sm btn-info" href="{% url 'course_students' course.id %}">
+                        <svg class="ico ico-sm"><use href="#ico-users"/></svg>&nbsp;Students ({{ course.students.count }})
+                    </a>
+                {% endif %}
+            </div>
+        </article>
+    {% empty %}
+        <div class="empty-state">
+            <svg class="ico ico-xl mb-1" style="color: var(--text-3);"><use href="#ico-book"/></svg>
+            No courses yet.
+        </div>
+    {% endfor %}
+</div>
+</div>
 {% endblock %}

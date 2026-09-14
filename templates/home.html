@@ -1,12 +1,81 @@
 {% extends "base.html" %}
+{% block title %}Dashboard · Smart Student Assistant{% endblock %}
+
 {% block content %}
 <section class="hero">
-  <h1>Smart Student Assistant</h1>
-  <p>Manage courses and tasks with a simple AI-powered assistant.</p>
-  {% if user.is_authenticated %}
-    <a class="button" href="/chat/">Open AI Assistant</a>
-  {% else %}
-    <a class="button" href="/accounts/register/">Get Started</a>
-  {% endif %}
+    <span class="hero-eyebrow">Your Study Copilot</span>
+    <h1>
+        {% if user.is_authenticated %}
+        Welcome back, {{ user.get_username }}
+        {% else %}
+        Smart Student Assistant
+        {% endif %}
+    </h1>
+    <p>
+        Manage your courses, track your tasks, and ask your AI assistant anything &mdash;
+        all in one clean, modern workspace.
+    </p>
+
+    {% if user.is_authenticated and user.profile.role %}
+        <div class="stats-row reveal">
+            {% if user.profile.role == "student" %}
+                <span class="stat-pill"><svg class="ico ico-sm"><use href="#ico-book"/></svg>&nbsp;Courses&nbsp;<strong>{{ user.enrolled_courses.count }}</strong></span>
+            {% else %}
+                <span class="stat-pill"><svg class="ico ico-sm"><use href="#ico-book"/></svg>&nbsp;Courses taught&nbsp;<strong>{{ user.taught_courses.count }}</strong></span>
+            {% endif %}
+            <span class="stat-pill"><svg class="ico ico-sm"><use href="#ico-check-square"/></svg>&nbsp;Tasks&nbsp;<strong>{{ user.tasks.count }}</strong></span>
+            <span class="stat-pill"><svg class="ico ico-sm"><use href="#ico-sparkles"/></svg>&nbsp;AI ready</span>
+        </div>
+    {% endif %}
 </section>
+
+{% if user.is_authenticated %}
+    <section class="dashboard-grid">
+        <a class="dash-card" href="/courses/" style="--i: 0">
+            <span class="dash-icon" aria-hidden="true">
+                <svg class="ico"><use href="#ico-book"/></svg>
+            </span>
+            <h3>Courses</h3>
+            <p>Browse available courses, enrol as a student, or manage the ones you teach &mdash; all in one place.</p>
+            <span class="dash-link">Explore courses <span class="arrow">&rarr;</span></span>
+        </a>
+
+        <a class="dash-card" href="/tasks/" style="--i: 1">
+            <span class="dash-icon" aria-hidden="true">
+                <svg class="ico"><use href="#ico-check-square"/></svg>
+            </span>
+            <h3>Tasks</h3>
+            <p>Create, organise and track your assignments with due dates, statuses and priorities.</p>
+            <span class="dash-link">Manage tasks <span class="arrow">&rarr;</span></span>
+        </a>
+
+        <a class="dash-card" href="/chat/" style="--i: 2">
+            <span class="dash-icon" aria-hidden="true">
+                <svg class="ico"><use href="#ico-sparkles"/></svg>
+            </span>
+            <h3>AI Assistant</h3>
+            <p>Chat with your personal student assistant about courses, tasks and study planning.</p>
+            <span class="dash-link">Start chatting <span class="arrow">&rarr;</span></span>
+        </a>
+    </section>
+
+    <section class="card reveal" style="margin-top: 40px; text-align: center;">
+        <p class="card-text">
+            Need help getting started? Open the
+            <a href="/chat/" style="color: var(--accent-1); font-weight: 600;">AI Assistant</a>
+            and ask anything about your courses or tasks.
+        </p>
+        <div class="d-flex gap-2 justify-center mt-2">
+            <a class="btn btn-accent" href="/tasks/new/"><svg class="ico ico-sm"><use href="#ico-plus"/></svg>&nbsp;New task</a>
+            {% if user.profile.role == "instructor" or user.profile.role == "admin" or user.is_superuser %}
+                <a class="btn btn-secondary" href="/courses/new/"><svg class="ico ico-sm"><use href="#ico-plus"/></svg>&nbsp;New course</a>
+            {% endif %}
+        </div>
+    </section>
+{% else %}
+    <section class="d-flex gap-2 justify-center mt-3 reveal">
+        <a class="btn btn-lg btn-accent" href="/accounts/register/">Get Started</a>
+        <a class="btn btn-lg btn-secondary" href="/accounts/login/">I already have an account</a>
+    </section>
+{% endif %}
 {% endblock %}
