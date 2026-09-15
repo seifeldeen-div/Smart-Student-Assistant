@@ -8,7 +8,9 @@ from django.shortcuts import render
 from courses.models import Course
 from tasks.models import Task
 
+from .agent import format_tool_result, run_agent
 from .models import ChatMessage
+from .tools import delete_task
 
 
 def _build_user_context(user):
@@ -17,6 +19,7 @@ def _build_user_context(user):
 
     task_data = [
         {
+            "id": task.id,
             "title": task.title,
             "description": task.description,
             "course": task.course.name if task.course else None,
@@ -38,32 +41,14 @@ def _build_user_context(user):
     )
 
 
-def _generate_reply(user_message, user_context):
+def _get_gemini_client():
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
         raise RuntimeError("GEMINI_API_KEY is not configured.")
 
     from google import genai
 
-    prompt = f"""You are a read-only student assistant.
-Answer the user's question using only the database context below.
-Do not guess, invent, or infer facts that are not present in the context.
-If the answer is not in the context, say that it is not available.
-Never create, update, or delete anything.
-
-DATABASE CONTEXT FOR THIS USER:
-{user_context}
-
-USER QUESTION:
-{user_message}
-"""
-
-    client = genai.Client(api_key=api_key)
-    response = client.models.generate_content(
-       model="gemini-3.6-flash",
-        contents=prompt,
-    )
-    return response.text.strip()
+    return genai.Client(api_key=api_key)
 
 
 @login_required
@@ -82,7 +67,29 @@ def chat_view(request):
 
     try:
         user_context = _build_user_context(request.user)
-        assistant_reply = _generate_reply(user_message, user_context)
+        pending_delete = request.session.get("pending_delete")
+        if pending_delete is not None:
+            if user_message.casefold() in {"yes", "y", "confirm", "confirm delete"}:
+                result = delete_task(request.user, pending_delete)
+                request.session.pop("pending_delete", None)
+                assistant_reply = format_tool_result(
+                    _get_gemini_client(),
+                    "delete_task",
+                    result,
+                )
+            else:
+                request.session.pop("pending_delete", None)
+                assistant_reply = "Deletion cancelled."
+        else:
+            result = run_agent(
+                request.user,
+                user_message,
+                user_context,
+                _get_gemini_client(),
+            )
+            if result["pending_delete"] is not None:
+                request.session["pending_delete"] = result["pending_delete"]
+            assistant_reply = result["reply"]
     except Exception as error:
         return JsonResponse({"error": str(error)}, status=503)
 
