@@ -12,32 +12,78 @@
         </div>
     </div>
 
-    {% if history %}
-        <div class="chat-box reveal">
-            {% for msg in history %}
-                <div class="chat-bubble {{ msg.role }}">
-                    <span>{{ msg.content }}</span>
-                    <span class="bubble-meta">{{ msg.created_at|date:"d M Y, H:i" }}</span>
-                </div>
-            {% endfor %}
-        </div>
-    {% else %}
-        <div class="empty-state reveal">
-            <svg class="ico ico-xl mb-1" style="color: var(--text-3);"><use href="#ico-sparkles"/></svg>
-            No messages yet. Start a conversation with your assistant below.
-        </div>
-    {% endif %}
+    <div class="chat-box reveal" id="chat-messages" aria-live="polite">
+        {% for msg in history %}
+            <div class="chat-bubble {{ msg.role }}">
+                <span>{{ msg.content }}</span>
+                <span class="bubble-meta">{{ msg.created_at|date:"d M Y, H:i" }}</span>
+            </div>
+        {% empty %}
+            <div class="empty-state" id="chat-empty-state">
+                <svg class="ico ico-xl mb-1" style="color: var(--text-3);"><use href="#ico-sparkles"/></svg>
+                No messages yet. Start a conversation with your assistant below.
+            </div>
+        {% endfor %}
+    </div>
 
-    <form method="post" class="chat-input-row reveal">
+    <form method="post" class="chat-input-row reveal" id="chat-form">
         {% csrf_token %}
-        <input type="text" name="message"
+        <input type="text" name="user_message" id="user-message"
                placeholder="Ask the assistant anything… (e.g. &quot;What is my next deadline?&quot;)"
                required autocomplete="off" autofocus>
-        <button class="btn btn-accent" type="submit">Send<svg class="ico ico-sm"><use href="#ico-send"/></svg></button>
+        <button class="btn btn-accent" type="submit" id="send-button">Send<svg class="ico ico-sm"><use href="#ico-send"/></svg></button>
     </form>
 
     <p class="chat-hint">
-        The assistant can help you find courses and manage tasks. Messages are saved in your history.
+        The assistant reads your courses and tasks but cannot change them.
     </p>
 </div>
+<script>
+    const chatForm = document.getElementById("chat-form");
+    const chatMessages = document.getElementById("chat-messages");
+    const userMessageInput = document.getElementById("user-message");
+    const sendButton = document.getElementById("send-button");
+    const csrfToken = chatForm.querySelector("[name=csrfmiddlewaretoken]").value;
+
+    function appendMessage(role, content) {
+        const bubble = document.createElement("div");
+        bubble.className = `chat-bubble ${role}`;
+        const text = document.createElement("span");
+        text.textContent = content;
+        bubble.appendChild(text);
+        chatMessages.appendChild(bubble);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    chatForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const message = userMessageInput.value.trim();
+        if (!message) return;
+
+        const emptyState = document.getElementById("chat-empty-state");
+        if (emptyState) emptyState.remove();
+        appendMessage("user", message);
+        userMessageInput.value = "";
+        sendButton.disabled = true;
+
+        try {
+            const response = await fetch("", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/x-www-form-urlencoded",
+                    "X-CSRFToken": csrfToken,
+                },
+                body: new URLSearchParams({user_message: message}),
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || "Unable to get a response.");
+            appendMessage("assistant", data.reply);
+        } catch (error) {
+            appendMessage("system", error.message);
+        } finally {
+            sendButton.disabled = false;
+            userMessageInput.focus();
+        }
+    });
+</script>
 {% endblock %}
