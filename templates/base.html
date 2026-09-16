@@ -139,6 +139,12 @@
                 <li><a href="/" data-nav><svg class="ico ico-sm"><use href="#ico-dashboard"/></svg>&nbsp;<span class="nav-label">Dashboard</span></a></li>
                 <li><a href="/courses/" data-nav><svg class="ico ico-sm"><use href="#ico-book"/></svg>&nbsp;<span class="nav-label">Courses</span></a></li>
                 <li><a href="/tasks/" data-nav><svg class="ico ico-sm"><use href="#ico-check-square"/></svg>&nbsp;<span class="nav-label">Tasks</span></a></li>
+                <li>
+                    <a href="/notifications/" data-nav>
+                        <svg class="ico ico-sm"><use href="#ico-inbox"/></svg>&nbsp;<span class="nav-label">Notifications</span>
+                        {% if unread_notifications_count %}<span class="nav-badge">{{ unread_notifications_count }}</span>{% endif %}
+                    </a>
+                </li>
                 <li><a href="/chat/" data-nav><svg class="ico ico-sm"><use href="#ico-sparkles"/></svg>&nbsp;<span class="nav-label">AI Assistant</span></a></li>
                 <li>
                     <form action="/accounts/logout/" method="post">
