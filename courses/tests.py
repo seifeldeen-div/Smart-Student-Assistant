@@ -41,11 +41,21 @@ class CourseApiPermissionTests(TestCase):
         self.course = Course.objects.create(name="Private course", instructor=self.instructor)
         self.other_course = Course.objects.create(name="Other course", instructor=self.other_instructor)
 
-    def test_student_only_sees_enrolled_courses(self):
+    def test_student_sees_all_courses_but_cannot_modify(self):
         self.client.force_login(self.student)
         response = self.client.get(reverse("course_api"))
-        self.assertEqual(response.json()["results"], [])
-        self.assertEqual(self.client.get(reverse("course_detail_api", args=[self.course.pk])).status_code, 404)
+        self.assertEqual(len(response.json()["results"]), 2)
+
+        detail = self.client.get(reverse("course_detail_api", args=[self.course.pk]))
+        self.assertEqual(detail.status_code, 200)
+        self.assertEqual(detail.json()["id"], self.course.pk)
+
+        modify = self.client.put(
+            reverse("course_detail_api", args=[self.course.pk]),
+            data='{"name": "Hacked"}',
+            content_type="application/json",
+        )
+        self.assertEqual(modify.status_code, 403)
 
     def test_instructor_cannot_access_another_instructors_course(self):
         self.client.force_login(self.instructor)

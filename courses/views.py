@@ -17,12 +17,10 @@ def _role(user):
 
 def _visible_courses(user):
     role = _role(user)
-    if role == "student":
-        return Course.objects.filter(students=user)
+    if role in {"student", "admin"}:
+        return Course.objects.all()
     if role == "instructor":
         return Course.objects.filter(instructor=user)
-    if role == "admin":
-        return Course.objects.all()
     return Course.objects.none()
 
 

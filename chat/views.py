@@ -16,6 +16,8 @@ from .tools import delete_task
 def _build_user_context(user):
     tasks = Task.objects.filter(owner=user).select_related("course")
     courses = Course.objects.filter(students=user)
+    taught_courses = Course.objects.filter(instructor=user)
+    role = "admin" if user.is_superuser else getattr(getattr(user, "profile", None), "role", None)
 
     task_data = [
         {
@@ -33,9 +35,13 @@ def _build_user_context(user):
         {"name": course.name, "description": course.description}
         for course in courses
     ]
+    taught_data = [
+        {"id": course.id, "name": course.name, "description": course.description}
+        for course in taught_courses
+    ]
 
     return json.dumps(
-        {"tasks": task_data, "enrolled_courses": course_data},
+        {"role": role, "tasks": task_data, "enrolled_courses": course_data, "taught_courses": taught_data},
         ensure_ascii=True,
         indent=2,
     )
