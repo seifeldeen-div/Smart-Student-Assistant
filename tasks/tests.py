@@ -42,14 +42,16 @@ class OwnershipFilteringTests(TestCase):
 
         self.mohamed = User.objects.create_user(username="mohamed", password="secret123")
         self.ahmed = User.objects.create_user(username="ahmed", password="secret123")
+        self.instructor = User.objects.create_user(username="instructor", password="secret123")
 
         Profile.objects.create(user=self.mohamed, role="student")
         Profile.objects.create(user=self.ahmed, role="student")
+        Profile.objects.create(user=self.instructor, role="instructor")
 
         self.course = Course.objects.create(
             name="Course 101",
             description="Course description",
-            instructor=self.mohamed,
+            instructor=self.instructor,
         )
 
         self.mohamed_task = Task.objects.create(
