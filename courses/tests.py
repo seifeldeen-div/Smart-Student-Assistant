@@ -27,3 +27,27 @@ class CourseCrudUITests(TestCase):
 
         list_response = self.client.get(reverse("course_list"))
         self.assertContains(list_response, "Database Basics")
+
+
+class CourseApiPermissionTests(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.instructor = User.objects.create_user(username="instructor", password="secret123")
+        self.other_instructor = User.objects.create_user(username="other", password="secret123")
+        self.student = User.objects.create_user(username="student", password="secret123")
+        Profile.objects.create(user=self.instructor, role="instructor")
+        Profile.objects.create(user=self.other_instructor, role="instructor")
+        Profile.objects.create(user=self.student, role="student")
+        self.course = Course.objects.create(name="Private course", instructor=self.instructor)
+        self.other_course = Course.objects.create(name="Other course", instructor=self.other_instructor)
+
+    def test_student_only_sees_enrolled_courses(self):
+        self.client.force_login(self.student)
+        response = self.client.get(reverse("course_api"))
+        self.assertEqual(response.json()["results"], [])
+        self.assertEqual(self.client.get(reverse("course_detail_api", args=[self.course.pk])).status_code, 404)
+
+    def test_instructor_cannot_access_another_instructors_course(self):
+        self.client.force_login(self.instructor)
+        response = self.client.get(reverse("course_detail_api", args=[self.other_course.pk]))
+        self.assertEqual(response.status_code, 404)

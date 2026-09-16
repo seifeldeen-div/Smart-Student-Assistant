@@ -42,14 +42,16 @@ class OwnershipFilteringTests(TestCase):
 
         self.mohamed = User.objects.create_user(username="mohamed", password="secret123")
         self.ahmed = User.objects.create_user(username="ahmed", password="secret123")
+        self.instructor = User.objects.create_user(username="instructor", password="secret123")
 
         Profile.objects.create(user=self.mohamed, role="student")
         Profile.objects.create(user=self.ahmed, role="student")
+        Profile.objects.create(user=self.instructor, role="instructor")
 
         self.course = Course.objects.create(
             name="Course 101",
             description="Course description",
-            instructor=self.mohamed,
+            instructor=self.instructor,
         )
 
         self.mohamed_task = Task.objects.create(
@@ -67,3 +69,21 @@ class OwnershipFilteringTests(TestCase):
         response = self.client.get(reverse("task_update", args=[self.mohamed_task.pk]))
 
         self.assertEqual(response.status_code, 404)
+
+    def test_student_cannot_access_other_users_task_api(self):
+        self.client.force_login(self.ahmed)
+        response = self.client.get(reverse("task_detail_api", args=[self.mohamed_task.pk]))
+        self.assertEqual(response.status_code, 404)
+
+    def test_course_instructor_can_read_related_tasks_but_cannot_modify_them(self):
+        self.client.force_login(self.instructor)
+        response = self.client.get(reverse("task_api"))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.json()["results"]), 1)
+
+        response = self.client.patch(
+            reverse("task_detail_api", args=[self.mohamed_task.pk]),
+            data={"title": "Changed"},
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 403)
