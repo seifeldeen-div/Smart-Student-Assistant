@@ -7,7 +7,7 @@
         <h1 class="page-title">My Tasks</h1>
         <p class="page-subtitle">Keep track of assignments, deadlines and priorities.</p>
     </div>
-    {% if user.profile.role == "student" or user.profile.role == "admin" or user.is_superuser %}
+    {% if user.profile.role == "student" or user.profile.role == "instructor" or user.profile.role == "admin" or user.is_superuser %}
         <a class="btn btn-accent" href="{% url 'task_create' %}"><svg class="ico ico-sm"><use href="#ico-plus"/></svg>&nbsp;New task</a>
     {% endif %}
 </div>
@@ -27,22 +27,40 @@
 
             <p class="card-text mt-1">{{ task.description|default:"No description provided." }}</p>
 
-            <div class="card-meta">
-                <span class="badge priority-{{ task.priority }}">{{ task.get_priority_display }} priority</span>
-                <span class="badge role-student">{{ task.due_date|date:"d M Y"|default:"No deadline" }}</span>
-                {% if task.course %}
-                    <span class="badge role-instructor">{{ task.course.name }}</span>
-                {% else %}
-                    <span class="badge role-student">No course</span>
-                {% endif %}
-            </div>
-
-            {% if user.profile.role == "student" and task.owner == user or user.profile.role == "admin" or user.is_superuser %}
-                <div class="card-actions">
-                    <a class="btn btn-sm btn-secondary" href="{% url 'task_update' task.id %}"><svg class="ico ico-sm"><use href="#ico-pencil"/></svg>&nbsp;Edit</a>
-                    <a class="btn btn-sm btn-danger" href="{% url 'task_delete' task.id %}"><svg class="ico ico-sm"><use href="#ico-trash"/></svg>&nbsp;Delete</a>
+            {% if user.profile.role == "instructor" or user.profile.role == "admin" or user.is_superuser %}
+                <div class="card-meta">
+                    <span class="badge role-student">
+                        <svg class="ico ico-sm" style="width:0.9em;height:0.9em;"><use href="#ico-user"/></svg>&nbsp;
+                        {% if task.assigned_to %}{{ task.assigned_to.get_username }}{% else %}Personal{% endif %}
+                    </span>
+                    <span class="badge priority-{{ task.priority }}">{{ task.get_priority_display }} priority</span>
+                    <span class="badge role-student">{{ task.due_date|date:"d M Y"|default:"No deadline" }}</span>
+                    {% if task.course %}
+                        <span class="badge role-instructor">{{ task.course.name }}</span>
+                    {% endif %}
+                </div>
+            {% else %}
+                <div class="card-meta">
+                    <span class="badge priority-{{ task.priority }}">{{ task.get_priority_display }} priority</span>
+                    <span class="badge role-student">{{ task.due_date|date:"d M Y"|default:"No deadline" }}</span>
+                    {% if task.course %}
+                        <span class="badge role-instructor">{{ task.course.name }}</span>
+                    {% endif %}
                 </div>
             {% endif %}
+
+            <div class="card-actions">
+                {% if task.owner == user or user.profile.role == "admin" or user.is_superuser %}
+                    <a class="btn btn-sm btn-secondary" href="{% url 'task_update' task.id %}"><svg class="ico ico-sm"><use href="#ico-pencil"/></svg>&nbsp;Edit</a>
+                    <a class="btn btn-sm btn-danger" href="{% url 'task_delete' task.id %}"><svg class="ico ico-sm"><use href="#ico-trash"/></svg>&nbsp;Delete</a>
+                {% endif %}
+                {% if user.profile.role == "student" and task.status != "completed" and task.owner == user or user.profile.role == "student" and task.status != "completed" and task.assigned_to == user %}
+                    <form method="post" action="{% url 'task_complete' task.id %}">
+                        {% csrf_token %}
+                        <button class="btn btn-sm btn-accent" type="submit"><svg class="ico ico-sm"><use href="#ico-check"/></svg>&nbsp;Mark as Completed</button>
+                    </form>
+                {% endif %}
+            </div>
         </article>
     {% empty %}
         <div class="empty-state">
