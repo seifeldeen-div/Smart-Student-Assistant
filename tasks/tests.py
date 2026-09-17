@@ -329,8 +329,9 @@ class InstructorPersonalTaskTests(TestCase):
         self.assertIsNone(task.assigned_to)
 
         response = self.client.get(reverse("task_list"))
-        self.assertContains(response, "Prepare tomorrow's lecture")
+        self.assertContains(response, "Prepare tomorrow's lecture", html=True)
         self.assertContains(response, "Personal")
+
 
     def test_student_does_not_see_instructor_personal_task(self):
         student = get_user_model().objects.create_user(username="stu_p", password="secret123")
@@ -347,3 +348,7 @@ class InstructorPersonalTaskTests(TestCase):
         self.client.login(username="stu_p", password="secret123")
         response = self.client.get(reverse("task_list"))
         self.assertNotContains(response, "Prepare tomorrow's lecture")
+
+
+
+  
