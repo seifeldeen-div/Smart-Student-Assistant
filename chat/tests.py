@@ -1,9 +1,26 @@
+from datetime import timedelta
+from types import SimpleNamespace
+
 from django.contrib.auth import get_user_model
-from django.test import TestCase
+from django.test import TestCase, override_settings
+from django.utils import timezone
 
 from accounts.models import Profile
-from courses.models import Course
-from .tools import create_course, enroll_in_course
+from courses.models import AcademicTopic, Course, Quiz, QuizSubmission
+from tasks.models import Task
+
+from .agent import TOOL_DECLARATIONS, run_agent
+from .tools import (
+    create_course,
+    delete_task,
+    enroll_in_course,
+    filter_tasks_by_priority,
+    get_course_details,
+    get_my_courses,
+    get_my_performance,
+    get_upcoming_tasks,
+    get_weak_topics,
+)
 
 
 class AgentCourseToolsTests(TestCase):
@@ -118,3 +135,78 @@ class AgentCourseToolsTests(TestCase):
 
         self.assertEqual(result["status"], "permission_denied")
         self.assertFalse(Course.objects.filter(name="Django Masterclass").exists())
+
+
+class Phase15AgentReadToolsTests(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.instructor = User.objects.create_user(username="tools-instructor", password="secret123")
+        self.student = User.objects.create_user(username="tools-student", password="secret123")
+        self.other_student = User.objects.create_user(username="other-tools-student", password="secret123")
+        Profile.objects.create(user=self.instructor, role="instructor")
+        Profile.objects.create(user=self.student, role="student")
+        Profile.objects.create(user=self.other_student, role="student")
+        self.course = Course.objects.create(name="Database Systems", instructor=self.instructor)
+        self.course.students.add(self.student)
+        AcademicTopic.objects.create(name="SQL Joins")
+        self.topic = AcademicTopic.objects.get(name="SQL Joins")
+        self.quiz = Quiz.objects.create(title="Joins quiz", course=self.course, topic=self.topic)
+
+    @override_settings(WEAK_TOPIC_ACCURACY_THRESHOLD=60)
+    def test_all_read_tools_are_scoped_and_structured(self):
+        Task.objects.create(
+            owner=self.student,
+            title="Due soon",
+            priority="high",
+            due_date=timezone.localdate() + timedelta(days=1),
+        )
+        Task.objects.create(owner=self.student, title="Low task", priority="low")
+        Task.objects.create(
+            owner=self.other_student,
+            title="Another student's task",
+            priority="high",
+            due_date=timezone.localdate() + timedelta(days=1),
+        )
+        QuizSubmission.objects.create(student=self.student, quiz=self.quiz, score=40)
+        QuizSubmission.objects.create(student=self.student, quiz=self.quiz, score=50)
+        QuizSubmission.objects.create(student=self.other_student, quiz=self.quiz, score=0)
+
+        self.assertEqual([task["title"] for task in filter_tasks_by_priority(self.student, "High")], ["Due soon"])
+        self.assertEqual([task["title"] for task in get_upcoming_tasks(self.student)], ["Due soon"])
+        self.assertEqual([course["name"] for course in get_my_courses(self.student)], ["Database Systems"])
+        details = get_course_details(self.student, "database systems")
+        self.assertEqual(details["course"]["name"], "Database Systems")
+        self.assertEqual(get_my_performance(self.student)["average_score"], 45)
+        self.assertEqual([topic["name"] for topic in get_weak_topics(self.student)], ["SQL Joins"])
+
+    def test_delete_requires_explicit_confirmation(self):
+        task = Task.objects.create(owner=self.student, title="Keep me", priority="low")
+
+        result = delete_task(self.student, task.id)
+
+        self.assertTrue(result["confirmation_required"])
+        self.assertTrue(Task.objects.filter(id=task.id).exists())
+
+    def test_llm_interface_dispatches_registered_tool(self):
+        function_call = SimpleNamespace(name="get_my_courses", args={})
+        first_response = SimpleNamespace(
+            candidates=[SimpleNamespace(content=SimpleNamespace(parts=[SimpleNamespace(function_call=function_call)]))],
+            text="",
+        )
+        follow_up = SimpleNamespace(text="You are enrolled in Database Systems.")
+
+        class FakeModels:
+            def __init__(self):
+                self.calls = []
+
+            def generate_content(self, **kwargs):
+                self.calls.append(kwargs)
+                return first_response if len(self.calls) == 1 else follow_up
+
+        client = SimpleNamespace(models=FakeModels())
+        result = run_agent(self.student, "What courses am I taking?", "{}", client)
+
+        declared_names = {declaration.name for declaration in TOOL_DECLARATIONS}
+        self.assertIn("get_my_courses", declared_names)
+        self.assertEqual(result["reply"], "You are enrolled in Database Systems.")
+        self.assertEqual(len(client.models.calls), 2)

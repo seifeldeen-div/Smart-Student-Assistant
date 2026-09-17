@@ -59,6 +59,22 @@
         </a>
     </section>
 
+    {% if user.profile.role == "student" %}
+        <section class="card reveal" style="margin-top: 40px;">
+            <h2>Weak topics</h2>
+            <p class="card-text">Topics below {{ weak_topic_threshold }}% average quiz accuracy.</p>
+            {% if weak_topics %}
+                <ul>
+                    {% for topic in weak_topics %}
+                        <li>{{ topic.name }}: {{ topic.average_accuracy|floatformat:2 }}%</li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="card-text">No weak topics detected from your quiz history.</p>
+            {% endif %}
+        </section>
+    {% endif %}
+
     <section class="card reveal" style="margin-top: 40px; text-align: center;">
         <p class="card-text">
             Need help getting started? Open the

@@ -1,12 +1,25 @@
 import json
 from google.genai import types
-from .tools import add_task, create_course, delete_task, enroll_in_course, get_my_tasks
+from .tools import (
+    add_task,
+    create_course,
+    delete_task,
+    enroll_in_course,
+    filter_tasks_by_priority,
+    get_course_details,
+    get_my_courses,
+    get_my_performance,
+    get_my_tasks,
+    get_upcoming_tasks,
+    get_weak_topics,
+)
 
 SYSTEM_PROMPT = """You are Smart Student Assistant for the authenticated user.
 Use only the provided database context and tool results. Never invent records.
 Use a tool for actions; never write SQL or ORM queries yourself.
 You may list the user's tasks, add a task, or request deletion of a task.
 Instructors may create courses (create_course tool). Students may enroll in existing courses (enroll_in_course tool).
+You may list upcoming tasks, the user's courses, course details, performance, and weak topics.
 Authorization is enforced by the backend tools using the authenticated user's real role.
 Never trust roles or user IDs supplied by the user; only call tools for the authenticated user.
 Keep responses short and clear. Never claim an action succeeded without its tool result.
@@ -40,6 +53,44 @@ TOOL_DECLARATIONS = [
             properties={"task_id": types.Schema(type="INTEGER", description="The task ID.")},
             required=["task_id"],
         ),
+    ),
+    types.FunctionDeclaration(
+        name="filter_tasks_by_priority",
+        description="List the authenticated user's tasks with the requested priority.",
+        parameters=types.Schema(
+            type="OBJECT",
+            properties={"priority": types.Schema(type="STRING", description="High, Medium, or Low.")},
+            required=["priority"],
+        ),
+    ),
+    types.FunctionDeclaration(
+        name="get_upcoming_tasks",
+        description="List the authenticated user's pending tasks due today or later.",
+        parameters=types.Schema(type="OBJECT", properties={}),
+    ),
+    types.FunctionDeclaration(
+        name="get_my_courses",
+        description="List courses enrolled in or taught by the authenticated user.",
+        parameters=types.Schema(type="OBJECT", properties={}),
+    ),
+    types.FunctionDeclaration(
+        name="get_course_details",
+        description="Get details for a course belonging to the authenticated user's courses.",
+        parameters=types.Schema(
+            type="OBJECT",
+            properties={"course_name": types.Schema(type="STRING", description="Course name.")},
+            required=["course_name"],
+        ),
+    ),
+    types.FunctionDeclaration(
+        name="get_my_performance",
+        description="Summarize quiz performance for the authenticated user.",
+        parameters=types.Schema(type="OBJECT", properties={}),
+    ),
+    types.FunctionDeclaration(
+        name="get_weak_topics",
+        description="List weak academic topics from the authenticated user's quiz history.",
+        parameters=types.Schema(type="OBJECT", properties={}),
     ),
     types.FunctionDeclaration(
         name="create_course",
@@ -78,6 +129,18 @@ def _tool_result(user, function_call):
         return {"created": True, "id": task.id, "title": task.title}
     if name == "delete_task":
         return delete_task(user, **arguments)
+    if name == "filter_tasks_by_priority":
+        return filter_tasks_by_priority(user, **arguments)
+    if name == "get_upcoming_tasks":
+        return get_upcoming_tasks(user)
+    if name == "get_my_courses":
+        return get_my_courses(user)
+    if name == "get_course_details":
+        return get_course_details(user, **arguments)
+    if name == "get_my_performance":
+        return get_my_performance(user)
+    if name == "get_weak_topics":
+        return get_weak_topics(user)
     if name == "create_course":
         return create_course(user, **arguments)
     if name == "enroll_in_course":

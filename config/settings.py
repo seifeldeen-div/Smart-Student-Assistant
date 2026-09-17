@@ -1,4 +1,5 @@
 import os
+from decimal import Decimal
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -74,6 +75,7 @@ STATICFILES_DIRS = [BASE_DIR / "static"]
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+WEAK_TOPIC_ACCURACY_THRESHOLD = Decimal(os.getenv("WEAK_TOPIC_ACCURACY_THRESHOLD", "60"))
 LOGIN_URL = "/accounts/login/"
 LOGIN_REDIRECT_URL = "/"
 LOGOUT_REDIRECT_URL = "/accounts/login/"
