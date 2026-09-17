@@ -76,7 +76,7 @@ def chat_view(request):
         pending_delete = request.session.get("pending_delete")
         if pending_delete is not None:
             if user_message.casefold() in {"yes", "y", "confirm", "confirm delete"}:
-                result = delete_task(request.user, pending_delete)
+                result = delete_task(request.user, pending_delete, confirmed=True)
                 request.session.pop("pending_delete", None)
                 assistant_reply = format_tool_result(
                     _get_gemini_client(),
