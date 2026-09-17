@@ -7,13 +7,15 @@
         <h1 class="page-title">My Tasks</h1>
         <p class="page-subtitle">Keep track of assignments, deadlines and priorities.</p>
     </div>
-    {% if user.profile.role == "student" or user.profile.role == "instructor" or user.profile.role == "admin" or user.is_superuser %}
+    {% if user.profile.role == "instructor" %}
         <a class="btn btn-accent" href="{% url 'task_create' %}"><svg class="ico ico-sm"><use href="#ico-plus"/></svg>&nbsp;New task</a>
     {% endif %}
 </div>
 
-<div class="grid-cards">
-    {% for task in tasks %}
+<div class="tasks-layout">
+    <section class="tasks-main">
+    <div class="grid-cards">
+        {% for task in tasks %}
         <article class="card reveal">
             <div class="d-flex justify-between align-center gap-2">
                 <div class="d-flex align-center gap-2">
@@ -25,6 +27,7 @@
                 <span class="badge status-{{ task.status }}">{{ task.get_status_display }}</span>
             </div>
 
+            <span class="badge role-instructor">{{ task.course.name }}</span>
             <p class="card-text mt-1">{{ task.description|default:"No description provided." }}</p>
 
             {% if user.profile.role == "instructor" or user.profile.role == "admin" or user.is_superuser %}
@@ -35,21 +38,32 @@
                     </span>
                     <span class="badge priority-{{ task.priority }}">{{ task.get_priority_display }} priority</span>
                     <span class="badge role-student">{{ task.due_date|date:"d M Y"|default:"No deadline" }}</span>
-                    {% if task.course %}
-                        <span class="badge role-instructor">{{ task.course.name }}</span>
-                    {% endif %}
+                    {% if task.course %}<span class="badge role-instructor">{{ task.course.name }}</span>{% endif %}
                 </div>
             {% else %}
                 <div class="card-meta">
                     <span class="badge priority-{{ task.priority }}">{{ task.get_priority_display }} priority</span>
                     <span class="badge role-student">{{ task.due_date|date:"d M Y"|default:"No deadline" }}</span>
-                    {% if task.course %}
-                        <span class="badge role-instructor">{{ task.course.name }}</span>
+                    {% if task.student_submissions %}
+                        <span class="badge status-completed">Submitted on {{ task.student_submissions.0.submitted_at|date:"d M Y H:i" }}</span>
+                    {% else %}
+                        <span class="badge status-pending">Pending</span>
                     {% endif %}
                 </div>
             {% endif %}
 
+            {% if user.profile.role == "student" and not task.student_submissions %}
+                <form method="post" action="{% url 'task_submit' task.id %}" enctype="multipart/form-data" class="card-actions">
+                    {% csrf_token %}
+                    {{ task.submission_form }}
+                    <button class="btn btn-sm btn-accent" type="submit">Submit Task</button>
+                </form>
+            {% endif %}
+
             <div class="card-actions">
+                {% if user.profile.role == "instructor" or user.profile.role == "admin" or user.is_superuser %}
+                    {% if task.course %}<a class="btn btn-sm btn-secondary" href="{% url 'task_submission_review' task.id %}">Review submissions</a>{% endif %}
+                {% endif %}
                 {% if task.owner == user or user.profile.role == "admin" or user.is_superuser %}
                     <a class="btn btn-sm btn-secondary" href="{% url 'task_update' task.id %}"><svg class="ico ico-sm"><use href="#ico-pencil"/></svg>&nbsp;Edit</a>
                     <a class="btn btn-sm btn-danger" href="{% url 'task_delete' task.id %}"><svg class="ico ico-sm"><use href="#ico-trash"/></svg>&nbsp;Delete</a>
@@ -62,13 +76,47 @@
                 {% endif %}
             </div>
         </article>
-    {% empty %}
-        <div class="empty-state">
+        {% empty %}
+            <div class="empty-state">
             <svg class="ico ico-xl mb-1" style="color: var(--text-3);"><use href="#ico-check-square"/></svg>
-            No tasks yet.
-            <br>
-            <a class="btn btn-sm btn-accent mt-2" href="{% url 'task_create' %}"><svg class="ico ico-sm"><use href="#ico-plus"/></svg>&nbsp;Create your first task</a>
-        </div>
-    {% endfor %}
+            No course tasks available.
+            {% if user.profile.role == "instructor" %}<br><a class="btn btn-sm btn-accent mt-2" href="{% url 'task_create' %}"><svg class="ico ico-sm"><use href="#ico-plus"/></svg>&nbsp;Create a course task</a>{% endif %}
+            </div>
+        {% endfor %}
+    </div>
+    </section>
+
+    {% if user.profile.role == "student" %}
+        <aside class="card notes-sidebar reveal">
+            <div class="d-flex justify-between align-center gap-2">
+                <h2 class="card-title">My Study Notes</h2>
+                <span class="badge role-student">{{ notes|length }}</span>
+            </div>
+            <form method="post" action="{% url 'note_create' %}" class="notes-form">
+                {% csrf_token %}
+                {{ note_form.content }}
+                <button class="btn btn-sm btn-accent" type="submit">Add Note</button>
+            </form>
+            <div class="notes-list">
+                {% for note in notes %}
+                    <div class="note-item {% if note.is_completed %}note-completed{% endif %}">
+                        <form method="post" action="{% url 'note_toggle' note.id %}">
+                            {% csrf_token %}
+                            <button class="note-check" type="submit" aria-label="Toggle note completion">
+                                {% if note.is_completed %}&#10003;{% else %}&#9675;{% endif %}
+                            </button>
+                        </form>
+                        <span class="note-content">{{ note.content }}</span>
+                        <form method="post" action="{% url 'note_delete' note.id %}">
+                            {% csrf_token %}
+                            <button class="btn btn-sm btn-danger" type="submit" aria-label="Delete note">Delete</button>
+                        </form>
+                    </div>
+                {% empty %}
+                    <p class="card-text">No study notes yet.</p>
+                {% endfor %}
+            </div>
+        </aside>
+    {% endif %}
 </div>
 {% endblock %}

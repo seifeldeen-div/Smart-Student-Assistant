@@ -20,6 +20,7 @@ INSTALLED_APPS = [
     "accounts.apps.AccountsConfig",
     "courses",
     "tasks",
+    "quizzes.apps.QuizzesConfig",
     "chat",
     "notifications.apps.NotificationsConfig",
 ]
@@ -76,6 +77,11 @@ MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 WEAK_TOPIC_ACCURACY_THRESHOLD = Decimal(os.getenv("WEAK_TOPIC_ACCURACY_THRESHOLD", "60"))
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY", "")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.6-flash")
 LOGIN_URL = "/accounts/login/"
 LOGIN_REDIRECT_URL = "/"
 LOGOUT_REDIRECT_URL = "/accounts/login/"
+
+
+

@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% load quiz_tags %}
+{% block title %}Quiz Result · Smart Student Assistant{% endblock %}
+{% block content %}
+<div class="page-header reveal"><div><h1 class="page-title">{{ attempt.quiz.title }} result</h1><p class="page-subtitle">{{ attempt.quiz.course.name }}</p></div><span class="badge status-completed">{{ attempt.score }}/{{ attempt.quiz.total_marks }} · {{ attempt.percentage }}%</span></div>
+<div class="grid-cards">{% for question in questions %}{% with answer=answers|get_item:question.id %}<article class="card {% if not answer.is_correct %}review-incorrect{% endif %}"><h2 class="card-title">{{ forloop.counter }}. {{ question.text }}</h2><p class="card-text">Your answer: {% if answer.selected_option %}{{ answer.get_selected_option_display }}{% else %}No answer{% endif %}</p><p class="card-text">Correct answer: {{ question.get_correct_option_display }}</p>{% if not answer.is_correct %}<span class="badge status-pending">Incorrect</span>{% else %}<span class="badge status-completed">Correct</span>{% endif %}</article>{% endwith %}{% endfor %}</div>
+{% endblock %}

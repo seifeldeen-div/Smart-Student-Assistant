@@ -82,8 +82,10 @@
             and ask anything about your courses or tasks.
         </p>
         <div class="d-flex gap-2 justify-center mt-2">
-            <a class="btn btn-accent" href="/tasks/new/"><svg class="ico ico-sm"><use href="#ico-plus"/></svg>&nbsp;New task</a>
-            {% if user.profile.role == "instructor" or user.profile.role == "admin" or user.is_superuser %}
+            {% if user.profile.role == "student" %}
+                <a class="btn btn-accent" href="{% url 'task_list' %}"><svg class="ico ico-sm"><use href="#ico-pencil"/></svg>&nbsp;Personal Study Notes</a>
+            {% elif user.profile.role == "instructor" %}
+                <a class="btn btn-accent" href="{% url 'task_create' %}"><svg class="ico ico-sm"><use href="#ico-plus"/></svg>&nbsp;New task</a>
                 <a class="btn btn-secondary" href="/courses/new/"><svg class="ico ico-sm"><use href="#ico-plus"/></svg>&nbsp;New course</a>
             {% endif %}
         </div>

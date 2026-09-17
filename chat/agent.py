@@ -1,4 +1,7 @@
 import json
+import logging
+
+from django.conf import settings
 from google.genai import types
 from .tools import (
     add_task,
@@ -13,6 +16,9 @@ from .tools import (
     get_upcoming_tasks,
     get_weak_topics,
 )
+
+FALLBACK_REPLY = "Sorry, I couldn't process your request right now. Please try again."
+logger = logging.getLogger(__name__)
 
 SYSTEM_PROMPT = """You are Smart Student Assistant for the authenticated user.
 Use only the provided database context and tool results. Never invent records.
@@ -149,74 +155,95 @@ def _tool_result(user, function_call):
 
 
 def format_tool_result(client, tool_name, result):
-    response = client.models.generate_content(
-        model="gemini-3.6-flash",
-        contents=(
-            f"{SYSTEM_PROMPT}\n"
-            f"The {tool_name} tool has completed.\n"
-            f"Tool result: {json.dumps(result, default=str)}\n"
-            "Respond naturally and briefly to the user. Do not claim anything beyond this result."
-        ),
-    )
-    return response.text.strip()
+    try:
+        response = client.models.generate_content(
+            model=settings.GEMINI_MODEL,
+            contents=(
+                f"{SYSTEM_PROMPT}\n"
+                f"The {tool_name} tool has completed.\n"
+                f"Tool result: {json.dumps(result, default=str)}\n"
+                "Respond naturally and briefly to the user. Do not claim anything beyond this result."
+            ),
+        )
+        response_text = response.text.strip() if (response and getattr(response, "text", None)) else ""
+        return response_text or FALLBACK_REPLY
+    except Exception as error:
+        print("Gemini API Error:", str(error))
+        logger.exception("Gemini API error while formatting tool result")
+        return FALLBACK_REPLY
 
 
 def run_agent(user, message, user_context, client):
-    contents = [
-        types.Content(
-            role="user",
-            parts=[
-                types.Part(
-                    text=(
-                        f"{SYSTEM_PROMPT}\n\nDATABASE CONTEXT:\n{user_context}"
-                        f"\n\nUSER MESSAGE:\n{message}"
-                    )
-                )
-            ],
-        )
-    ]
-    tool_config = types.GenerateContentConfig(
-        tools=[types.Tool(function_declarations=TOOL_DECLARATIONS)]
-    )
-    response = client.models.generate_content(
-        model="gemini-3.6-flash",
-        contents=contents,
-        config=tool_config,
-    )
-    function_call = next(
-        (part.function_call for part in response.candidates[0].content.parts if part.function_call),
-        None,
-    )
-    if not function_call:
-        return {"reply": response.text.strip(), "pending_delete": None}
-
-    if function_call.name == "delete_task":
-        return {
-            "reply": "Are you sure you want to delete this task?",
-            "pending_delete": function_call.args.get("task_id"),
-        }
-
-    result = _tool_result(user, function_call)
-    follow_up = client.models.generate_content(
-        model="gemini-3.6-flash",
-        contents=contents
-        + [
-            response.candidates[0].content,
+    try:
+        safe_context = user_context or "{}"
+        safe_message = message or ""
+        contents = [
             types.Content(
                 role="user",
                 parts=[
                     types.Part(
-                        function_response=types.FunctionResponse(
-                            name=function_call.name,
-                            response={"result": result},
+                        text=(
+                            f"{SYSTEM_PROMPT}\n\nFRESH DATABASE CONTEXT:\n{safe_context}"
+                            f"\n\nUSER MESSAGE:\n{safe_message}"
                         )
                     )
                 ],
-            ),
-        ],
-        config=tool_config,
-    )
-    return {"reply": follow_up.text.strip(), "pending_delete": None}
+            )
+        ]
+        tool_config = types.GenerateContentConfig(
+            tools=[types.Tool(function_declarations=TOOL_DECLARATIONS)]
+        )
+        response = client.models.generate_content(
+            model=settings.GEMINI_MODEL,
+            contents=contents,
+            config=tool_config,
+        )
+        if not response:
+            return {"reply": FALLBACK_REPLY, "pending_delete": None}
+
+        candidates = getattr(response, "candidates", None) or []
+        response_content = getattr(candidates[0], "content", None) if candidates else None
+        response_parts = getattr(response_content, "parts", None) or []
+        function_call = next(
+            (getattr(part, "function_call", None) for part in response_parts if getattr(part, "function_call", None)),
+            None,
+        )
+        if not function_call:
+            response_text = response.text.strip() if (getattr(response, "text", None)) else ""
+            return {"reply": response_text or FALLBACK_REPLY, "pending_delete": None}
+
+        if function_call.name == "delete_task":
+            return {
+                "reply": "Are you sure you want to delete this task?",
+                "pending_delete": function_call.args.get("task_id"),
+            }
+
+        result = _tool_result(user, function_call)
+        follow_up = client.models.generate_content(
+            model=settings.GEMINI_MODEL,
+            contents=contents
+            + [
+                response_content,
+                types.Content(
+                    role="user",
+                    parts=[
+                        types.Part(
+                            function_response=types.FunctionResponse(
+                                name=function_call.name,
+                                response={"result": result},
+                            )
+                        )
+                    ],
+                ),
+            ],
+            config=tool_config,
+        )
+        response_text = follow_up.text.strip() if (follow_up and getattr(follow_up, "text", None)) else ""
+        return {"reply": response_text or FALLBACK_REPLY, "pending_delete": None}
+    except Exception as error:
+        print("Gemini API Error:", str(error))
+        logger.exception("Gemini API error while running agent")
+        return {"reply": FALLBACK_REPLY, "pending_delete": None}
 
 
     
