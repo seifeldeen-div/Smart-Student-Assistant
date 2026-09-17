@@ -9,8 +9,16 @@ class TaskNotification(models.Model):
         related_name="notifications",
     )
     message = models.CharField(max_length=255)
+    target_url = models.CharField(max_length=255, blank=True)
     task = models.ForeignKey(
         "tasks.Task",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="notifications",
+    )
+    quiz = models.ForeignKey(
+        "quizzes.Quiz",
         on_delete=models.CASCADE,
         null=True,
         blank=True,

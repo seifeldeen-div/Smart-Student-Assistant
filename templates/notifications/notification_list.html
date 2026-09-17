@@ -25,8 +25,8 @@
             </span>
             <div class="notification-body">
                 <p class="notification-message">
-                    {% if notification.task %}
-                        <a href="{% url 'task_list' %}">{{ notification.message }}</a>
+                    {% if notification.target_url %}
+                        <a href="{{ notification.target_url }}">{{ notification.message }}</a>
                     {% else %}
                         {{ notification.message }}
                     {% endif %}

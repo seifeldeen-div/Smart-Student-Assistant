@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block title %}Questions · Smart Student Assistant{% endblock %}
+{% block content %}
+<div class="page-header reveal"><div><h1 class="page-title">{{ quiz.title }} questions</h1><p class="page-subtitle">Add and maintain the quiz MCQs.</p></div></div>
+<form method="post" class="card form-card reveal">{% csrf_token %}{{ form.as_p }}<button class="btn btn-accent" type="submit">Add question</button></form>
+<div class="grid-cards mt-2">{% for question in questions %}<article class="card"><h3 class="card-title">{{ question.text }}</h3><p class="card-text">Correct answer: {{ question.get_correct_option_display }} · {{ question.marks }} marks</p><div class="card-actions"><a class="btn btn-sm btn-secondary" href="{% url 'quiz_question_update' question.id %}">Edit</a><form method="post" action="{% url 'quiz_question_delete' question.id %}">{% csrf_token %}<button class="btn btn-sm btn-danger" type="submit">Delete</button></form></div></article>{% empty %}<div class="empty-state">Add the first question.</div>{% endfor %}</div>
+{% endblock %}

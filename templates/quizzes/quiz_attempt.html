@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}{{ quiz.title }} · Smart Student Assistant{% endblock %}
+{% block content %}
+<div class="page-header reveal"><div><h1 class="page-title">{{ quiz.title }}</h1><p class="page-subtitle">{{ quiz.course.name }} · {{ quiz.total_marks }} marks</p></div><span class="badge status-pending" id="quiz-timer" data-duration="{{ quiz.duration }}">{{ quiz.duration }}:00</span></div>
+<form method="post" id="quiz-form" class="grid-cards">{% csrf_token %}{% for question in questions %}<article class="card"><h2 class="card-title">{{ forloop.counter }}. {{ question.text }}</h2><label><input type="radio" name="question_{{ question.id }}" value="a"> {{ question.option_a }}</label><label><input type="radio" name="question_{{ question.id }}" value="b"> {{ question.option_b }}</label><label><input type="radio" name="question_{{ question.id }}" value="c"> {{ question.option_c }}</label><label><input type="radio" name="question_{{ question.id }}" value="d"> {{ question.option_d }}</label></article>{% endfor %}<button class="btn btn-accent" type="submit">Submit quiz</button></form>
+<script>
+(function () {
+    const timer = document.getElementById("quiz-timer");
+    const form = document.getElementById("quiz-form");
+    let remaining = Number(timer.dataset.duration || 0) * 60;
+    const tick = () => { const minutes = Math.floor(remaining / 60); const seconds = String(remaining % 60).padStart(2, "0"); timer.textContent = `${minutes}:${seconds}`; if (remaining <= 0) form.submit(); else { remaining -= 1; window.setTimeout(tick, 1000); } };
+    tick();
+}());
+</script>
+{% endblock %}

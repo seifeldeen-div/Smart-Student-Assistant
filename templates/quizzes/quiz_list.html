@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Open Quizzes · Smart Student Assistant{% endblock %}
+{% block content %}
+<div class="page-header reveal">
+    <div><h1 class="page-title">Open Quizzes</h1><p class="page-subtitle">Complete active quizzes for your enrolled courses.</p></div>
+</div>
+<div class="grid-cards">
+    {% for quiz in quizzes %}
+        <article class="card reveal">
+            <span class="badge role-instructor">{{ quiz.course.name }}</span>
+            <h2 class="card-title mt-1">{{ quiz.title }}</h2>
+            <div class="card-meta"><span class="badge role-student">{{ quiz.duration }} minutes</span><span class="badge role-student">{{ quiz.total_marks }} marks</span></div>
+            {% if quiz.student_attempt and quiz.student_attempt.completed %}<a class="btn btn-secondary mt-2" href="{% url 'quiz_review' quiz.student_attempt.id %}">Review result</a>{% else %}<a class="btn btn-accent mt-2" href="{% url 'quiz_attempt' quiz.id %}">Take quiz</a>{% endif %}
+        </article>
+    {% empty %}<div class="empty-state">No open quizzes right now.</div>{% endfor %}
+</div>
+{% endblock %}

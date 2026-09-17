@@ -1106,6 +1106,68 @@ textarea {
     gap: 22px;
 }
 
+.tasks-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr);
+    gap: 24px;
+    align-items: start;
+}
+
+.tasks-main .grid-cards {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+}
+
+.notes-sidebar {
+    position: sticky;
+    top: 24px;
+}
+
+.notes-form {
+    display: grid;
+    gap: 10px;
+    margin: 18px 0 22px;
+}
+
+.notes-form textarea {
+    width: 100%;
+    resize: vertical;
+}
+
+.notes-list {
+    display: grid;
+    gap: 12px;
+}
+
+.note-item {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 8px;
+    align-items: start;
+    padding: 10px 0;
+    border-top: 1px solid var(--border);
+}
+
+.note-check {
+    width: 28px;
+    height: 28px;
+    border: 1px solid var(--border-strong);
+    border-radius: 8px;
+    background: var(--surface-strong);
+    color: var(--accent-1);
+    cursor: pointer;
+}
+
+.note-content {
+    color: var(--text-1);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.note-completed .note-content {
+    color: var(--text-3);
+    text-decoration: line-through;
+}
+
 .empty-state {
     grid-column: 1 / -1;
     text-align: center;
@@ -1207,6 +1269,14 @@ textarea {
 }
 
 @media (max-width: 700px) {
+    .tasks-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .notes-sidebar {
+        position: static;
+    }
+
     .courses-page .grid-cards {
         grid-template-columns: 1fr;
         gap: 18px;

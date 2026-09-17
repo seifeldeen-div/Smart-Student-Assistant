@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Review Submissions · Smart Student Assistant{% endblock %}
+
+{% block content %}
+<div class="page-header reveal">
+    <div>
+        <h1 class="page-title">{{ task.title }}</h1>
+        <p class="page-subtitle">{{ task.course.name }} · Student submissions</p>
+    </div>
+</div>
+
+<div class="grid-cards">
+    {% for submission in submissions %}
+        <article class="card reveal">
+            <div class="d-flex justify-between align-center gap-2">
+                <h3 class="card-title">{{ submission.student.get_username }}</h3>
+                <span class="badge status-{{ submission.status|lower }}">{{ submission.status }}</span>
+            </div>
+            <p class="card-text">Submitted {{ submission.submitted_at|date:"d M Y H:i" }}</p>
+            {% if submission.submission_file %}<p><a href="{{ submission.submission_file.url }}">View uploaded file</a></p>{% endif %}
+            {% if submission.submission_link %}<p><a href="{{ submission.submission_link }}" target="_blank" rel="noopener">Open submission link</a></p>{% endif %}
+            {% if submission.notes %}<p class="card-text">{{ submission.notes }}</p>{% endif %}
+        </article>
+    {% empty %}
+        <div class="empty-state">No submissions yet.</div>
+    {% endfor %}
+</div>
+{% endblock %}

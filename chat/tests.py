@@ -1,4 +1,5 @@
 from datetime import timedelta
+import json
 from types import SimpleNamespace
 
 from django.contrib.auth import get_user_model
@@ -9,7 +10,8 @@ from accounts.models import Profile
 from courses.models import AcademicTopic, Course, Quiz, QuizSubmission
 from tasks.models import Task
 
-from .agent import TOOL_DECLARATIONS, run_agent
+from .agent import FALLBACK_REPLY, TOOL_DECLARATIONS, format_tool_result, run_agent
+from .views import _build_user_context
 from .tools import (
     create_course,
     delete_task,
@@ -210,3 +212,53 @@ class Phase15AgentReadToolsTests(TestCase):
         self.assertIn("get_my_courses", declared_names)
         self.assertEqual(result["reply"], "You are enrolled in Database Systems.")
         self.assertEqual(len(client.models.calls), 2)
+
+
+class GeminiFailureAndFreshContextTests(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.instructor = User.objects.create_user(username="context-instructor", password="secret123")
+        self.student = User.objects.create_user(username="context-student", password="secret123")
+        self.other_student = User.objects.create_user(username="context-other", password="secret123")
+        Profile.objects.create(user=self.instructor, role="instructor")
+        Profile.objects.create(user=self.student, role="student")
+        Profile.objects.create(user=self.other_student, role="student")
+        self.course = Course.objects.create(name="Enrolled Course", instructor=self.instructor)
+        self.course.students.add(self.student)
+        self.other_course = Course.objects.create(name="Other Course", instructor=self.instructor)
+
+    def test_context_contains_only_fresh_active_enrolled_course_tasks(self):
+        Task.objects.create(owner=self.instructor, course=self.course, title="Current task", due_date=timezone.localdate())
+        Task.objects.create(owner=self.instructor, course=self.other_course, title="Unenrolled task", due_date=timezone.localdate())
+        Task.objects.create(owner=self.student, title="Personal task", due_date=timezone.localdate())
+        expired = Task.objects.create(
+            owner=self.instructor,
+            course=self.course,
+            title="Expired task",
+            due_date=timezone.localdate() - timedelta(days=1),
+        )
+        Task.objects.create(owner=self.instructor, course=self.course, title="Submitted expired", due_date=timezone.localdate() - timedelta(days=1))
+
+        context = json.loads(_build_user_context(self.student))
+        task_titles = {task["title"] for task in context["tasks"]}
+
+        self.assertEqual(task_titles, {"Current task"})
+        self.assertNotIn("Expired task", task_titles)
+        self.assertTrue(Task.objects.filter(pk=expired.pk).exists())
+
+    def test_empty_and_exceptional_gemini_responses_use_fallback(self):
+        class NullModels:
+            def generate_content(self, **kwargs):
+                return None
+
+        class ErrorModels:
+            def generate_content(self, **kwargs):
+                raise RuntimeError("Gemini unavailable")
+
+        null_client = SimpleNamespace(models=NullModels())
+        error_client = SimpleNamespace(models=ErrorModels())
+
+        self.assertEqual(run_agent(self.student, "Hello", "{}", null_client)["reply"], FALLBACK_REPLY)
+        self.assertEqual(run_agent(self.student, "Hello", "{}", error_client)["reply"], FALLBACK_REPLY)
+        self.assertEqual(format_tool_result(null_client, "get_my_tasks", []), FALLBACK_REPLY)
+        self.assertEqual(format_tool_result(error_client, "get_my_tasks", []), FALLBACK_REPLY)

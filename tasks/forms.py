@@ -5,6 +5,7 @@ from django.utils import timezone
 
 from courses.models import Course
 from .models import Task
+from .models import StudentNote, TaskSubmission
 
 
 def _role(user):
@@ -85,3 +86,30 @@ class TaskForm(forms.ModelForm):
             elif not taught.filter(students=assigned_to).exists():
                 raise ValidationError({"assigned_to": "You can only assign tasks to students enrolled in your courses."})
         return cleaned_data
+
+
+class TaskSubmissionForm(forms.ModelForm):
+    class Meta:
+        model = TaskSubmission
+        fields = ["submission_file", "submission_link", "notes"]
+
+    def clean(self):
+        cleaned_data = super().clean()
+        if not cleaned_data.get("submission_file") and not cleaned_data.get("submission_link"):
+            raise ValidationError("Upload a file or provide a submission link.")
+        return cleaned_data
+
+
+class StudentNoteForm(forms.ModelForm):
+    class Meta:
+        model = StudentNote
+        fields = ["content"]
+        widgets = {
+            "content": forms.Textarea(attrs={"rows": 3, "placeholder": "Write a study note..."}),
+        }
+
+    def clean_content(self):
+        content = self.cleaned_data["content"].strip()
+        if not content:
+            raise ValidationError("Note content is required.")
+        return content

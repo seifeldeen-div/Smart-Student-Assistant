@@ -77,3 +77,52 @@ class Task(models.Model):
 
     def __str__(self):
         return self.title
+
+
+class TaskSubmission(models.Model):
+    STATUS_CHOICES = [
+        ("Submitted", "Submitted"),
+        ("Graded", "Graded"),
+    ]
+
+    task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name="submissions")
+    student = models.ForeignKey(User, on_delete=models.CASCADE, related_name="task_submissions")
+    submission_file = models.FileField(upload_to="submissions/", blank=True)
+    submission_link = models.URLField(blank=True)
+    notes = models.TextField(blank=True)
+    submitted_at = models.DateTimeField(auto_now_add=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="Submitted")
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["task", "student"], name="unique_task_submission_per_student"),
+        ]
+        ordering = ["-submitted_at"]
+
+    def clean(self):
+        super().clean()
+        if not self.submission_file and not self.submission_link:
+            raise ValidationError("Submit a file or a URL link.")
+        if self.student_id and self.task_id and self.task.course_id:
+            if not self.task.course.students.filter(id=self.student_id).exists():
+                raise ValidationError("Only enrolled students can submit this task.")
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        return super().save(*args, **kwargs)
+
+
+class StudentNote(models.Model):
+    student = models.ForeignKey(User, on_delete=models.CASCADE, related_name="student_notes")
+    content = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_completed = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ["is_completed", "-created_at"]
+        indexes = [
+            models.Index(fields=["student", "is_completed"]),
+        ]
+
+    def __str__(self):
+        return self.content[:60]

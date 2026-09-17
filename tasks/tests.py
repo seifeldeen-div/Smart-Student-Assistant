@@ -1,11 +1,15 @@
 from django.contrib.auth import get_user_model
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.exceptions import ValidationError
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
+from datetime import timedelta
 
 from accounts.models import Profile
 from courses.models import Course
-from tasks.models import Task
+from notifications.models import TaskNotification
+from tasks.models import StudentNote, Task, TaskSubmission
 
 
 class AdminTaskFormCourseVisibilityTests(TestCase):
@@ -348,6 +352,191 @@ class InstructorPersonalTaskTests(TestCase):
         self.client.login(username="stu_p", password="secret123")
         response = self.client.get(reverse("task_list"))
         self.assertNotContains(response, "Prepare tomorrow's lecture")
+
+
+class TaskSubmissionWorkflowTests(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.instructor = User.objects.create_user(username="reviewer", password="secret123")
+        self.student = User.objects.create_user(username="submitter", password="secret123")
+        self.other_student = User.objects.create_user(username="outsider", password="secret123")
+        Profile.objects.create(user=self.instructor, role="instructor")
+        Profile.objects.create(user=self.student, role="student")
+        Profile.objects.create(user=self.other_student, role="student")
+        self.course = Course.objects.create(name="Malware Analysis", instructor=self.instructor)
+        self.course.students.add(self.student)
+        self.task = Task.objects.create(
+            owner=self.instructor,
+            course=self.course,
+            title="Analyze sample",
+            description="Write a short report.",
+            due_date=timezone.localdate() + timedelta(days=1),
+        )
+
+    def test_student_sees_only_enrolled_course_tasks_and_due_reminder(self):
+        other_course = Course.objects.create(name="Private Course", instructor=self.instructor)
+        Task.objects.create(owner=self.instructor, course=other_course, title="Hidden task")
+
+        self.client.force_login(self.student)
+        response = self.client.get(reverse("task_list"))
+
+        self.assertContains(response, "Analyze sample")
+        self.assertContains(response, "Malware Analysis")
+        self.assertNotContains(response, "Hidden task")
+        self.assertTrue(TaskNotification.objects.filter(recipient=self.student, task=self.task).exists())
+
+    def test_student_can_submit_file_and_instructor_is_notified(self):
+        self.client.force_login(self.student)
+        upload = SimpleUploadedFile("report.pdf", b"report content", content_type="application/pdf")
+
+        response = self.client.post(
+            reverse("task_submit", args=[self.task.pk]),
+            {"submission_file": upload, "notes": "Completed analysis."},
+        )
+
+        self.assertRedirects(response, reverse("task_list"))
+        submission = TaskSubmission.objects.get(task=self.task, student=self.student)
+        self.assertEqual(submission.status, "Submitted")
+        notification = TaskNotification.objects.get(recipient=self.instructor, task=self.task)
+        self.assertIn("submitter", notification.message)
+        self.assertEqual(notification.target_url, reverse("task_submission_review", args=[self.task.pk]))
+
+    def test_instructor_can_review_only_own_course_submissions(self):
+        TaskSubmission.objects.create(task=self.task, student=self.student, submission_link="https://github.com/example/repo")
+        self.client.force_login(self.instructor)
+
+        response = self.client.get(reverse("task_submission_review", args=[self.task.pk]))
+
+        self.assertContains(response, "submitter")
+        self.assertContains(response, "github.com/example/repo")
+
+        other_instructor = get_user_model().objects.create_user(username="other-reviewer", password="secret123")
+        Profile.objects.create(user=other_instructor, role="instructor")
+        self.client.force_login(other_instructor)
+        self.assertEqual(self.client.get(reverse("task_submission_review", args=[self.task.pk])).status_code, 404)
+
+    def test_unenrolled_student_cannot_submit(self):
+        self.client.force_login(self.other_student)
+
+        response = self.client.post(
+            reverse("task_submit", args=[self.task.pk]),
+            {"submission_link": "https://github.com/example/repo"},
+        )
+
+        self.assertEqual(response.status_code, 404)
+        self.assertFalse(TaskSubmission.objects.exists())
+
+    def test_expired_unsubmitted_task_is_not_active_and_notifies_student(self):
+        expired_task = Task.objects.create(
+            owner=self.instructor,
+            course=self.course,
+            title="Expired analysis",
+            due_date=timezone.localdate() - timedelta(days=1),
+        )
+        self.client.force_login(self.student)
+
+        response = self.client.get(reverse("task_list"))
+
+        self.assertNotContains(response, "Expired analysis")
+        notification = TaskNotification.objects.get(recipient=self.student, task=expired_task)
+        self.assertEqual(notification.message, "The deadline for task 'Expired analysis' has passed.")
+        self.assertEqual(TaskNotification.objects.filter(recipient=self.student, task=expired_task).count(), 1)
+
+        self.client.get(reverse("task_list"))
+        self.assertEqual(TaskNotification.objects.filter(recipient=self.student, task=expired_task).count(), 1)
+
+    def test_expired_submitted_task_is_archived_but_submission_is_preserved(self):
+        expired_task = Task.objects.create(
+            owner=self.instructor,
+            course=self.course,
+            title="Submitted analysis",
+            due_date=timezone.localdate() - timedelta(days=1),
+        )
+        submission = TaskSubmission.objects.create(
+            task=expired_task,
+            student=self.student,
+            submission_link="https://github.com/example/submitted-analysis",
+        )
+        self.client.force_login(self.student)
+
+        response = self.client.get(reverse("task_list"))
+
+        self.assertNotContains(response, "Submitted analysis")
+        self.assertTrue(TaskSubmission.objects.filter(pk=submission.pk, task=expired_task, student=self.student).exists())
+        self.assertFalse(TaskNotification.objects.filter(recipient=self.student, task=expired_task).exists())
+
+    def test_student_cannot_submit_after_task_deadline(self):
+        expired_task = Task.objects.create(
+            owner=self.instructor,
+            course=self.course,
+            title="Late analysis",
+            due_date=timezone.localdate() - timedelta(days=1),
+        )
+        self.client.force_login(self.student)
+
+        response = self.client.post(
+            reverse("task_submit", args=[expired_task.pk]),
+            {"submission_link": "https://github.com/example/late-analysis"},
+        )
+
+        self.assertEqual(response.status_code, 404)
+        self.assertFalse(TaskSubmission.objects.filter(task=expired_task, student=self.student).exists())
+
+
+class StudentNotesTests(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.student = User.objects.create_user(username="notes-student", password="secret123")
+        self.other_student = User.objects.create_user(username="other-notes-student", password="secret123")
+        Profile.objects.create(user=self.student, role="student")
+        Profile.objects.create(user=self.other_student, role="student")
+
+    def test_student_can_add_toggle_and_delete_own_note(self):
+        self.client.force_login(self.student)
+
+        response = self.client.post(reverse("note_create"), {"content": "Review SQL joins"})
+        self.assertRedirects(response, reverse("task_list"))
+        note = StudentNote.objects.get(student=self.student)
+
+        self.client.post(reverse("note_toggle", args=[note.pk]))
+        note.refresh_from_db()
+        self.assertTrue(note.is_completed)
+
+        self.client.post(reverse("note_delete", args=[note.pk]))
+        self.assertFalse(StudentNote.objects.filter(pk=note.pk).exists())
+
+    def test_student_cannot_modify_another_students_note(self):
+        note = StudentNote.objects.create(student=self.other_student, content="Private note")
+        self.client.force_login(self.student)
+
+        self.assertEqual(self.client.post(reverse("note_toggle", args=[note.pk])).status_code, 404)
+        self.assertEqual(self.client.post(reverse("note_delete", args=[note.pk])).status_code, 404)
+        self.assertTrue(StudentNote.objects.filter(pk=note.pk).exists())
+
+
+class TaskCreationNavigationTests(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.student = User.objects.create_user(username="nav-student", password="secret123")
+        self.instructor = User.objects.create_user(username="nav-instructor", password="secret123")
+        Profile.objects.create(user=self.student, role="student")
+        Profile.objects.create(user=self.instructor, role="instructor")
+
+    def test_student_dashboard_points_to_notes_instead_of_task_creation(self):
+        self.client.force_login(self.student)
+
+        response = self.client.get(reverse("home"))
+
+        self.assertContains(response, "Personal Study Notes")
+        self.assertNotContains(response, "/tasks/new/")
+
+    def test_instructor_dashboard_keeps_new_task_action(self):
+        self.client.force_login(self.instructor)
+
+        response = self.client.get(reverse("home"))
+
+        self.assertContains(response, "New task")
+        self.assertContains(response, reverse("task_create"))
 
 
 
