@@ -5,7 +5,13 @@
 <div class="page-header reveal">
     <div>
         <h1 class="page-title">Notifications</h1>
-        <p class="page-subtitle">Updates about the tasks assigned to you and completed by your students.</p>
+        {% if user.is_superuser %}
+            <p class="page-subtitle">System-wide notifications and platform activity updates.</p>
+        {% elif user.is_instructor %}
+            <p class="page-subtitle">Updates about new task submissions and quiz activity from your students.</p>
+        {% else %}
+            <p class="page-subtitle">Updates about new tasks, quizzes, and announcements assigned to you.</p>
+        {% endif %}
     </div>
     {% if notifications %}
         <div class="d-flex gap-2">
@@ -53,3 +59,9 @@
     {% endfor %}
 </div>
 {% endblock %}
+
+
+
+
+
+سس
