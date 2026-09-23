@@ -7,8 +7,8 @@
         <h1 class="page-title">Notifications</h1>
         {% if user.is_superuser %}
             <p class="page-subtitle">System-wide notifications and platform activity updates.</p>
-        {% elif user.is_instructor %}
-            <p class="page-subtitle">Updates about new task submissions and quiz activity from your students.</p>
+        {% elif user.profile.role == "instructor" %}
+            <p class="page-subtitle">Updates about tasks, quizzes, and announcements created by you or related to your courses.</p>
         {% else %}
             <p class="page-subtitle">Updates about new tasks, quizzes, and announcements assigned to you.</p>
         {% endif %}

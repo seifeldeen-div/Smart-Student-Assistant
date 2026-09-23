@@ -1,7 +1,10 @@
 import json
 import logging
+import traceback
 
 from django.conf import settings
+from google import genai
+from google.genai import errors
 from google.genai import types
 from .tools import (
     add_task,
@@ -17,7 +20,7 @@ from .tools import (
     get_weak_topics,
 )
 
-FALLBACK_REPLY = "Sorry, I couldn't process your request right now. Please try again."
+FALLBACK_REPLY = "Service busy, try again."
 logger = logging.getLogger(__name__)
 
 SYSTEM_PROMPT = """You are Smart Student Assistant for the authenticated user.
@@ -167,37 +170,44 @@ def format_tool_result(client, tool_name, result):
         )
         response_text = response.text.strip() if (response and getattr(response, "text", None)) else ""
         return response_text or FALLBACK_REPLY
-    except Exception as error:
-        print("Gemini API Error:", str(error))
-        logger.exception("Gemini API error while formatting tool result")
+    except errors.APIError as e:
+        print(f"GEMINI ERROR: {e}")
+        traceback.print_exc()
+        logger.exception(e)
+        return FALLBACK_REPLY
+    except Exception as e:
+        print(f"GEMINI ERROR: {e}")
+        traceback.print_exc()
+        logger.exception(e)
         return FALLBACK_REPLY
 
 
-def run_agent(user, message, user_context, client):
+def run_agent(user, message, user_context, client=None):
     try:
-        safe_context = user_context or "{}"
+        api_key = settings.GEMINI_API_KEY
+        if client is None:
+            client = genai.Client(api_key=api_key)
+        print(
+            "DEBUG GEMINI API KEY:",
+            "<configured>" if settings.GEMINI_API_KEY else "<missing>",
+        )
+        print("DEBUG GEMINI API KEY LENGTH:", len(settings.GEMINI_API_KEY or ""))
+        print("DEBUG MODEL:", repr(settings.GEMINI_MODEL))
         safe_message = message or ""
-        contents = [
-            types.Content(
-                role="user",
-                parts=[
-                    types.Part(
-                        text=(
-                            f"{SYSTEM_PROMPT}\n\nFRESH DATABASE CONTEXT:\n{safe_context}"
-                            f"\n\nUSER MESSAGE:\n{safe_message}"
-                        )
-                    )
-                ],
-            )
-        ]
         tool_config = types.GenerateContentConfig(
             tools=[types.Tool(function_declarations=TOOL_DECLARATIONS)]
         )
-        response = client.models.generate_content(
-            model=settings.GEMINI_MODEL,
-            contents=contents,
-            config=tool_config,
-        )
+        try:
+            response = client.models.generate_content(
+                model=settings.GEMINI_MODEL,
+                contents=message,
+                config=tool_config,
+            )
+        except Exception as e:
+            print("GEMINI API ERROR:", e)
+            traceback.print_exc()
+            logger.exception(e)
+            return {"reply": f"Error: {str(e)}", "pending_delete": None}
         if not response:
             return {"reply": FALLBACK_REPLY, "pending_delete": None}
 
@@ -218,32 +228,51 @@ def run_agent(user, message, user_context, client):
                 "pending_delete": function_call.args.get("task_id"),
             }
 
-        result = _tool_result(user, function_call)
-        follow_up = client.models.generate_content(
-            model=settings.GEMINI_MODEL,
-            contents=contents
-            + [
-                response_content,
-                types.Content(
-                    role="user",
-                    parts=[
-                        types.Part(
-                            function_response=types.FunctionResponse(
-                                name=function_call.name,
-                                response={"result": result},
+        try:
+            result = _tool_result(user, function_call)
+            follow_up = client.models.generate_content(
+                model=settings.GEMINI_MODEL,
+                contents=[
+                    types.Content(
+                        role="user",
+                        parts=[types.Part(text=safe_message)],
+                    )
+                ]
+                + [
+                    response_content,
+                    types.Content(
+                        role="user",
+                        parts=[
+                            types.Part(
+                                function_response=types.FunctionResponse(
+                                    name=function_call.name,
+                                    response={"result": result},
+                                )
                             )
-                        )
-                    ],
-                ),
-            ],
-            config=tool_config,
-        )
+                        ],
+                    ),
+                ],
+                config=tool_config,
+            )
+        except errors.APIError as e:
+            print(f"GEMINI ERROR: {e}")
+            traceback.print_exc()
+            logger.exception(e)
+            return {"reply": FALLBACK_REPLY, "pending_delete": None}
+        except Exception as e:
+            print(f"GEMINI ERROR: {e}")
+            traceback.print_exc()
+            logger.exception(e)
+            return {"reply": FALLBACK_REPLY, "pending_delete": None}
         response_text = follow_up.text.strip() if (follow_up and getattr(follow_up, "text", None)) else ""
         return {"reply": response_text or FALLBACK_REPLY, "pending_delete": None}
-    except Exception as error:
-        print("Gemini API Error:", str(error))
-        logger.exception("Gemini API error while running agent")
-        return {"reply": FALLBACK_REPLY, "pending_delete": None}
+    except Exception as e:
+        print("GEMINI API ERROR:", e)
+        traceback.print_exc()
+        logger.exception(e)
+        return {"reply": f"Error: {str(e)}", "pending_delete": None}
 
 
-    
+
+
+        
