@@ -244,6 +244,3 @@ def run_agent(user, message, user_context, client):
         print("Gemini API Error:", str(error))
         logger.exception("Gemini API error while running agent")
         return {"reply": FALLBACK_REPLY, "pending_delete": None}
-
-
-    
