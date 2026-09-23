@@ -112,4 +112,4 @@ class StudentNoteForm(forms.ModelForm):
         content = self.cleaned_data["content"].strip()
         if not content:
             raise ValidationError("Note content is required.")
-        return content
+        return contentg

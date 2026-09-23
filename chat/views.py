@@ -1,6 +1,5 @@
 import json
 import logging
-import os
 import traceback
 
 from django.conf import settings
@@ -18,6 +17,12 @@ from .models import ChatMessage
 from .tools import delete_task
 
 logger = logging.getLogger(__name__)
+
+
+def _get_gemini_client():
+    from google import genai
+
+    return genai.Client(api_key=settings.GEMINI_API_KEY)
 
 
 def _build_user_context(user):
@@ -59,31 +64,29 @@ def _build_user_context(user):
     )
 
 
-def _get_gemini_client():
-    api_key = settings.GEMINI_API_KEY or os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
-    if not api_key:
-        raise RuntimeError("GEMINI_API_KEY or GOOGLE_API_KEY is not configured.")
-
-    from google import genai
-
-    return genai.Client(api_key=api_key)
-
-
 @login_required
 def chat_view(request):
-    history = ChatMessage.objects.filter(user=request.user).order_by("created_at")
-
-    if request.method == "GET":
-        return render(request, "chat/chat.html", {"history": history})
-
-    if request.method != "POST":
-        return JsonResponse({"error": "Method not allowed."}, status=405)
-
-    user_message = request.POST.get("user_message", "").strip()
-    if not user_message:
-        return JsonResponse({"error": "Please enter a message."}, status=400)
-
     try:
+        history = ChatMessage.objects.filter(user=request.user).order_by("created_at")
+
+        if request.method == "GET":
+            return render(request, "chat/chat.html", {"history": history})
+
+        if request.method != "POST":
+            return JsonResponse({"error": "Method not allowed."}, status=405)
+
+        if request.content_type == "application/json":
+            try:
+                payload = json.loads(request.body or "{}")
+            except (TypeError, ValueError):
+                return JsonResponse({"error": "Invalid JSON body."}, status=400)
+            user_message = str(payload.get("user_message", "")).strip()
+        else:
+            user_message = request.POST.get("user_message", "").strip()
+
+        if not user_message:
+            return JsonResponse({"error": "Please enter a message."}, status=400)
+
         request.session.pop("chat_context", None)
         request.session.pop("task_context", None)
         user_context = _build_user_context(request.user)
@@ -105,21 +108,19 @@ def chat_view(request):
                 request.user,
                 user_message,
                 user_context,
-                _get_gemini_client(),
             )
             if result["pending_delete"] is not None:
                 request.session["pending_delete"] = result["pending_delete"]
             assistant_reply = result["reply"]
-    except Exception as error:
-        print("Gemini API Error:", str(error))
-        logger.exception("Gemini API error in chat view")
+        ChatMessage.objects.create(user=request.user, role="user", content=user_message)
+        ChatMessage.objects.create(
+            user=request.user,
+            role="assistant",
+            content=assistant_reply,
+        )
+        return JsonResponse({"reply": assistant_reply})
+    except Exception as e:
+        print(f"GEMINI ERROR: {e}")
         traceback.print_exc()
-        assistant_reply = FALLBACK_REPLY
-
-    ChatMessage.objects.create(user=request.user, role="user", content=user_message)
-    ChatMessage.objects.create(
-        user=request.user,
-        role="assistant",
-        content=assistant_reply,
-    )
-    return JsonResponse({"reply": assistant_reply})
+        logger.exception(e)
+        return JsonResponse({"reply": FALLBACK_REPLY}, status=503)
